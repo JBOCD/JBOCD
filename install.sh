@@ -138,7 +138,7 @@ echo Downloading JBOCD
 #download procedure use file copy now
 #change it 
 cd $BASE_PATH
-cp -r server
+cp -r server ./$TEMP/server
 #...
 
 echo Compiling JBOCD
@@ -160,6 +160,6 @@ if [ ! -f /etc/JBOCD/config.json.bak ]; then
 fi
 
 cd $BASE_PATH
-umount $TEMP
+sudo umount $TEMP
 rm -r $TEMP
 exit 0
