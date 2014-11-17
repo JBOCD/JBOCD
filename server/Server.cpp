@@ -1,5 +1,5 @@
 Server::Server(Config* conf){
-	port = (short) json_object_get_int(conf.get("server.port"));
+	port = (short) json_object_get_int(conf->get("server.port"));
 
 	int sockfd = 0, connfd = 0;
 	struct sockaddr_in server; 
@@ -20,10 +20,10 @@ Server::Server(Config* conf){
 		}else{
 			listen(sockfd, 10); // 10 == max number of waiting accept connection
 			client = (struct client_info*) malloc(sizeof(struct client_info));
-			while(client->connfd = accept(sockfd, (struct sockaddr*)&(client->conn), sizeof(client->conn))){
+			while(client->connfd = accept(sockfd, (struct sockaddr*)&(client->conn), (struct socklen_t*)sizeof(client->conn))){
 				Thread::clearThread();
 				// create new thread
-				pthread_create(&(client->thread, NULL, client_thread, client);
+				pthread_create(&(client->thread), NULL, &Server::client_thread, client);
 
 				client = (struct client_info*) malloc(sizeof(struct client_info));
 //
@@ -38,8 +38,8 @@ Server::client_thread(void* in){
 	struct client_info* conf = (struct client_info*) in;
 	char* str = "ggwp";
 //				snprintf(sendBuff, sizeof(sendBuff), "%.24s\r\n", ctime(&ticks));
-	write(connfd, str, strlen(str)); 
+	write(conf->connfd, str, strlen(str));
 	// end thread
 	close(conf->connfd);
-	Thread::addDelQueue(conf->thread, conf);
+	Thread::addDelQueue((struct thread_queue*) malloc(sizeof(struct thread_queue)),conf->thread, conf);
 }

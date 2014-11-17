@@ -29,7 +29,7 @@ class Server{
 	private:
 		Config* conf;
 		short port;
-		client_thread(void*);
+		void client_thread(void*);
 	public:
 		Server(Config*);
 };
