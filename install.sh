@@ -138,7 +138,7 @@ echo Downloading JBOCD
 #download procedure use file copy now
 #change it 
 cd $BASE_PATH
-cp -r server ./$TEMP/server
+cp -r server $TEMP/server
 #...
 
 echo Compiling JBOCD
