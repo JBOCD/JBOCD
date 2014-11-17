@@ -1,0 +1,17 @@
+/*
+ * Readme first
+ *
+ * DO NOT REMOVE ANY COMMENT.
+ * 
+ * All comment are used to auto 
+ *   config generating for install
+ *   other plug-in.
+ */
+{
+	"server":{
+		"port":1000
+	},
+	"driver":{
+		// INSTALL DRIVER
+	}
+}
