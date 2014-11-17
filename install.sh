@@ -85,30 +85,24 @@ if [ "$SET_PROXY" = "y" ]; then
 	echo Changing Proxy Setting
 	cd "$SAVE_STEP_PATH"
 	tmp=0
-	if [ "`cat /etc/environment | grep http_proxy`" != "http_proxy=\"$SET_HTTP_PROXY\"" ];
-	then
-		if [ "$PERNAMENT_PROXY" = "y" ];
-		then
+	if [ "`cat /etc/environment | grep http_proxy`" != "http_proxy=\"$SET_HTTP_PROXY\"" ]; then
+		if [ "$PERNAMENT_PROXY" = "y" ]; then
 			sudo bash -c "echo http_proxy=\"$SET_HTTP_PROXY\" >> /etc/environment"
 			sudo bash -c "echo HTTP_PROXY=\"$SET_HTTP_PROXY\" >> /etc/environment"
 			tmp=1
 		fi
 		export http_proxy=$SET_HTTP_PROXY
 	fi
-	if [ "`cat /etc/environment | grep https_proxy`" != "https_proxy=\"$SET_HTTPS_PROXY\"" ];
-	then
-		if [ "$PERNAMENT_PROXY" = "y" ];
-		then
+	if [ "`cat /etc/environment | grep https_proxy`" != "https_proxy=\"$SET_HTTPS_PROXY\"" ]; then
+		if [ "$PERNAMENT_PROXY" = "y" ]; then
 			sudo bash -c "echo https_proxy=\"$SET_HTTPS_PROXY\" >> /etc/environment"
 			sudo bash -c "echo HTTPS_PROXY=\"$SET_HTTPS_PROXY\" >> /etc/environment"
 			tmp=1
 		fi
 		export https_proxy=$SET_HTTPS_PROXY
 	fi
-	if [ "`cat /etc/environment | grep ftp_proxy`" != "ftp_proxy=\"$SET_FTP_PROXY\"" ];
-	then
-		if [ "$PERNAMENT_PROXY" = "y" ];
-		then
+	if [ "`cat /etc/environment | grep ftp_proxy`" != "ftp_proxy=\"$SET_FTP_PROXY\"" ]; then
+		if [ "$PERNAMENT_PROXY" = "y" ]; then
 			sudo bash -c "echo ftp_proxy=\"$SET_FTP_PROXY\" >> /etc/environment"
 			sudo bash -c "echo FTP_PROXY=\"$SET_FTP_PROXY\" >> /etc/environment"
 			tmp=1
@@ -129,8 +123,7 @@ fi
 
 echo Installing Build Package.
 sudo apt-get upgrade -y && sudo apt-get update -y
-if [ ! -f ${SAVE_STEP_PATH}/lib-apt-install ];
-then
+if [ ! -f ${SAVE_STEP_PATH}/lib-apt-install ]; then
 	# for all
 	sudo apt-get install build-essential git -y
 
@@ -140,26 +133,33 @@ then
 	touch ${SAVE_STEP_PATH}/lib-apt-install
 fi
 
-#if [ ! -f ${SAVE_STEP_PATH}/lib-json-c ];
-#then
-#	cd $TEMP
-#	git clone https://github.com/json-c/json-c.git
-#	cd json-c
-#	echo `pwd`
-#	sudo sh autogen.sh
-## wt* it should run 2 times for running autogen.sh properly
-## test at 19/10/2014
-#	sudo sh autogen.sh
-#	sudo ./configure
-#	sudo make
-#	sudo make install
-#	cd ../
-##	sudo rm -r *
-#	touch ${SAVE_STEP_PATH}/lib-json-c
-#fi
-echo Downloading CSS
-cd $TEMP
+echo Downloading JBOCD
+
+#download procedure use file copy now
+#change it 
+cd $BASE_PATH
+cp -r server
+#...
+
+echo Compiling JBOCD
+cd $TEMP/server
+make clean; make
+
+echo Setting up JBOCD
+[ ! -d /etc/JBOCD ] && sudo mkdir /etc/JBOCD
+sudo cp /etc/JBOCD/config.json /etc/JBOCD/config.json.bak
+sudo cp config.json /etc/JBOCD/config.json
+sudo chmod 644 /etc/JBOCD/config.json
 
 echo "Installation completed"
 
+if [ ! -f /etc/JBOCD/config.json.bak ]; then
+	echo 
+	echo 'Your previous config file is backuped as "config.json.bak"'
+	echo 'Go to /etc/JBOCD/ to reconfig the JBOCD'
+fi
+
+cd $BASE_PATH
+umount $TEMP
+rm -r $TEMP
 exit 0
