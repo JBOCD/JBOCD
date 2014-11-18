@@ -6,4 +6,4 @@ all:
 	g++ -std=c++0x -pthread -o ${BUILD}/server main.cpp $(CFLAGS) $(LDFLAGS)
 
 clean:
-	[ -f server ] && rm server
+	[ -f ${BUILD}/server ] && rm ${BUILD}/server
