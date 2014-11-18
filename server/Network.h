@@ -10,7 +10,7 @@ class Network{
 		// for compatitability, we use "short", "int", and "long long"
 		static short toShort(unsigned char*);
 		static int toInt(unsigned char*);
-		static long long toLong(unsigned char*);
+		static long long toLongLong(unsigned char*);
 		static char* toChars(unsigned char*);
 		static void toBytes(short value, unsigned char* ptr);
 		static void toBytes(int value, unsigned char* ptr);

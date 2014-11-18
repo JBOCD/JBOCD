@@ -24,6 +24,7 @@ struct client_info{
 	struct sockaddr_in conn;
 	pthread_t thread;
 	int connfd;
+	int sockLen;
 };
 class Server{
 	private:

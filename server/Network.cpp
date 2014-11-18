@@ -7,7 +7,7 @@ int Network::toInt(unsigned char* in){
 	int out = 0;
 	return ((((((out | in[0]) << 8 ) | in[1]) << 8 ) | in[2]) << 8 ) | in[3];
 }
-long long Network::toLongLong(unsigned char*){
+long long Network::toLongLong(unsigned char* in){
 	long long out = 0;
 	return ((((((((((((((out | in[0]) << 8 ) | in[1]) << 8 ) | in[2]) << 8 ) | in[3]) << 8) | in[4]) << 8 ) | in[5]) << 8 ) | in[6]) << 8 ) | in[7];
 }

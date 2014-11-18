@@ -20,15 +20,13 @@ Server::Server(Config* conf){
 		}else{
 			listen(sockfd, 10); // 10 == max number of waiting accept connection
 			client = (struct client_info*) malloc(sizeof(struct client_info));
-			while(client->connfd = accept(sockfd, (struct sockaddr*)&(client->conn), sizeof(client->conn))){
+			client->sockLen = sizeof(client->conn);
+			while(client->connfd = accept(sockfd, (struct sockaddr*)&(client->conn), &client->sockLen)){
 				Thread::clearThread();
-				// create new thread
 				pthread_create(&(client->thread), NULL, &Server::client_thread, client);
 
 				client = (struct client_info*) malloc(sizeof(struct client_info));
-//
-//				close(connfd);
-//				sleep(1);
+				client->sockLen = sizeof(client->conn);
 			}
 		}
 	}

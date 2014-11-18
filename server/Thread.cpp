@@ -1,3 +1,7 @@
+void Thread::init(){
+	root = NULL;
+	mutex = PTHREAD_MUTEX_INITIALIZER;
+}
 
 void Thread::addDelQueue(struct thread_queue* val, pthread_t t, void* res){
 	val->t = t;
@@ -12,7 +16,7 @@ void Thread::clearThread(){
 	pthread_mutex_lock(&Thread::mutex);
 	while(root){
 		tmp = Thread::root;
-		pthread_join(tmp->t);
+		pthread_join(tmp->t, NULL);
 		Thread::root = Thread::root->next;
 		free(tmp->res);
 		free(tmp);
