@@ -21,9 +21,9 @@ Server::Server(Config* conf){
 			listen(sockfd, 10); // 10 == max number of waiting accept connection
 			client = (struct client_info*) malloc(sizeof(struct client_info));
 			client->sockLen = sizeof(client->conn);
-			while(client->connfd = accept(sockfd, (struct sockaddr*)&(client->conn), &client->sockLen)){
+			while(client->connfd = accept(sockfd, (struct sockaddr*)&(client->conn), (socklen_t*)&client->sockLen)){
 				Thread::clearThread();
-				pthread_create(&(client->thread), NULL, &Server::client_thread, client);
+				pthread_create(&(client->thread), NULL, &Server::client_thread, (void*) client);
 
 				client = (struct client_info*) malloc(sizeof(struct client_info));
 				client->sockLen = sizeof(client->conn);
@@ -32,9 +32,9 @@ Server::Server(Config* conf){
 	}
 }
 
-Server::client_thread(void* in){
+void* Server::client_thread(void* in){
 	struct client_info* conf = (struct client_info*) in;
-	char* str = "ggwp";
+	const char* str = "ggwp";
 //				snprintf(sendBuff, sizeof(sendBuff), "%.24s\r\n", ctime(&ticks));
 	write(conf->connfd, str, strlen(str));
 	// end thread

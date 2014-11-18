@@ -30,7 +30,7 @@ class Server{
 	private:
 		Config* conf;
 		short port;
-		static void client_thread(void*);
+		static void* client_thread(void*);
 	public:
 		Server(Config*);
 };
