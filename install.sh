@@ -50,6 +50,7 @@ echo Setting Environment variable.
 BASE_PATH=`pwd`
 SAVE_STEP_PATH=${BASE_PATH}/step_info
 TEMP=${BASE_PATH}/temp
+BUILD=${BASE_PATH}/build
 INITD_PATH=/etc/init.d/
 INITD_NAME=CSS
 START_SH=${TEMP}/start
@@ -78,6 +79,7 @@ fi
 echo Starting installing
 
 [ ! -d "$SAVE_STEP_PATH" ] && mkdir "$SAVE_STEP_PATH"
+[ ! -d "$BUILD" ] && mkdir "$BUILD"
 [ -d "$TEMP" ] && (sudo umount $TEMP; sudo rm -r $TEMP); mkdir $TEMP
 
 sudo mount -t tmpfs -o size=300m tmpfs $TEMP
@@ -143,7 +145,7 @@ cp -r server $TEMP/server
 
 echo Compiling JBOCD
 cd $TEMP/server
-make clean; make
+make clean; make BUILD=$BUILD
 
 echo Setting up JBOCD
 [ ! -d /etc/JBOCD ] && sudo mkdir /etc/JBOCD
