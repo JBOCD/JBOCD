@@ -20,7 +20,7 @@
 // at current stage, not implement fork yet.
 #define MAX_CLIENT 1014
 #define MAX_FORK 0
-typedef struct client_info{
+struct client_info{
 	struct sockaddr_in conn;
 	pthread_t thread;
 	int connfd;

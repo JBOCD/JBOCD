@@ -3,7 +3,7 @@
 #ifndef THREAD_H
 #define THREAD_H
 
-typedef struct thread_queue{
+struct thread_queue{
 	struct thread_queue* next;
 	void* res;
 	pthread_t t;
@@ -11,7 +11,7 @@ typedef struct thread_queue{
 
 class Thread{
 	private:
-		static struct thread_queue* root = null;
+		static struct thread_queue* root = 0;
 		static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 		Thread();
 	public:
