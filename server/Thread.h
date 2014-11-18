@@ -15,10 +15,12 @@ class Thread{
 		static pthread_mutex_t mutex;
 		Thread();
 	public:
-		static void init();
 		static void addDelQueue(struct thread_queue* val, pthread_t t, void* res);
 		static void clearThread(); // only main thread can use this function
 };
+
+struct thread_queue* Thread::root = NULL;
+pthread_mutex_t Thread::mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #include "Thread.cpp"
 

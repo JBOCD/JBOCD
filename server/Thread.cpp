@@ -1,8 +1,3 @@
-void Thread::init(){
-	root = NULL;
-	mutex = PTHREAD_MUTEX_INITIALIZER;
-}
-
 void Thread::addDelQueue(struct thread_queue* val, pthread_t t, void* res){
 	val->t = t;
 	val->res = res;
