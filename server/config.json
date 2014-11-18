@@ -8,10 +8,19 @@
  *   other plug-in.
  */
 {
+	"database":{
+		"MySQL":{
+			"host":"127.0.0.1",
+			"port":"3306",
+			"user":"JBOCDuser",
+			"pass":"JBOCDpass",
+			"dbname":"JBOCD"
+		}
+	},
 	"server":{
 		"port":1000
 	},
-	"driver":{
+	"cloudDriver":{
 		// INSTALL DRIVER
 	}
 }

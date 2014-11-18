@@ -131,6 +131,9 @@ if [ ! -f ${SAVE_STEP_PATH}/lib-apt-install ]; then
 
 	# for json-c
 	sudo apt-get install libjson0 libjson0-dev libjsoncpp0 libjsoncpp-dev libjson-glib-1.0-0 libjson-glib-dev -y
+
+	#for mysql
+	sudo apt-get install libmysqlcppconn-dev -y
 #	sudo apt-get isntall gcc clang libtool autoconf automake
 	touch ${SAVE_STEP_PATH}/lib-apt-install
 fi
