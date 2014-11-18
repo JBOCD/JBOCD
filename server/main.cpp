@@ -12,10 +12,14 @@ int main() {
 	char input[100];
 	json_object *tmp;
 
+	// start server
+	new Server(config);
+/* config getter example
 	while(1){
 		scanf("%s",input);
 		tmp = config->get(input);
 		printf("%s, %d, %d, %d, %lf, %s\n", input, json_object_get_type(tmp), json_object_get_boolean(tmp), json_object_get_int(tmp), json_object_get_double(tmp), json_object_get_string(tmp));
 	}
+*/
 }
 
