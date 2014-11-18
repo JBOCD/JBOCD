@@ -1,4 +1,5 @@
 Server::Server(Config* conf){
+	printf("Starting Server ...\n");
 	port = (short) json_object_get_int(conf->get("server.port"));
 
 	int sockfd = 0, connfd = 0;
@@ -12,19 +13,22 @@ Server::Server(Config* conf){
 	}else{
 		server.sin_family = AF_INET;
 		server.sin_addr.s_addr = INADDR_ANY;
-		server.sin_port = htons(port); 
+		server.sin_port = htons(port);
 
+		printf("Binding Server to port %d ...\n", port);
 		if( bind(sockfd, (struct sockaddr*)&server, sizeof(server)) < 0){ 
 			perror("Bind failed.");
 			exit(1);
 		}else{
+			printf("Start Listening ... \n");
 			listen(sockfd, 10); // 10 == max number of waiting accept connection
 			client = (struct client_info*) malloc(sizeof(struct client_info));
 			client->sockLen = sizeof(client->conn);
 			while(client->connfd = accept(sockfd, (struct sockaddr*)&(client->conn), (socklen_t*)&client->sockLen)){
+				printf("Incoming Connection detected.\n");
 				Thread::clearThread();
 				pthread_create(&(client->thread), NULL, &Server::client_thread, (void*) client);
-
+				printf("New Thread %d is created.\n",(int)client->thread);
 				client = (struct client_info*) malloc(sizeof(struct client_info));
 				client->sockLen = sizeof(client->conn);
 			}
@@ -34,7 +38,7 @@ Server::Server(Config* conf){
 
 void* Server::client_thread(void* in){
 	struct client_info* conf = (struct client_info*) in;
-	const char* str = "ggwp";
+	const char* str = "ggwp\n";
 //				snprintf(sendBuff, sizeof(sendBuff), "%.24s\r\n", ctime(&ticks));
 	write(conf->connfd, str, strlen(str));
 	// end thread
