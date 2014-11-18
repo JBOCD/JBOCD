@@ -5,7 +5,7 @@ void Thread::addDelQueue(struct thread_queue* val, pthread_t t, void* res){
 	val->next = root;
 	root = val;
 	pthread_mutex_unlock(&mutex);
-	printf("Added Ended Connection to clear queue.\n")
+	printf("Added Ended Connection to clear queue.\n");
 }
 void Thread::clearThread(){
 	struct thread_queue* tmp;
