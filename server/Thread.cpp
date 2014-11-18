@@ -2,8 +2,8 @@
 void Thread::addDelQueue(struct thread_queue* val, pthread_t t, void* res){
 	val->t = t;
 	val->res = res;
-	val->next = root;
 	pthread_mutex_lock(&mutex);
+	val->next = root;
 	root = val;
 	pthread_mutex_unlock(&mutex);
 }

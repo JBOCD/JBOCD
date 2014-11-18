@@ -26,7 +26,7 @@ Config::Config(){
 		fclose(fPtr);
 	}
 }
-json_object *Config::getFrom(char *path, json_object *curRoot){
+json_object *Config::getFrom(const char *path, json_object *curRoot){
 	json_object *tmp;
 	char * originalPath = path;
 	unsigned char i=0, flag=0;
@@ -83,6 +83,6 @@ json_object *Config::getFrom(char *path, json_object *curRoot){
 	return curRoot;
 }
 
-json_object *Config::get(char * path){
+json_object *Config::get(const char * path){
 	return getFrom(path, root);
 }
