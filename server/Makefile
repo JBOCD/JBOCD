@@ -6,4 +6,4 @@ all:
 	g++ -pthread -o server main.cpp $(CFLAGS) $(LDFLAGS)
 
 clean:
-	rm main
+	[ -f server ] && rm server

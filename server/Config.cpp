@@ -28,7 +28,7 @@ Config::Config(){
 }
 json_object *Config::getFrom(const char *path, json_object *curRoot){
 	json_object *tmp;
-	char * originalPath = path;
+	const char * originalPath = path;
 	unsigned char i=0, flag=0;
 	do{
 		if(flag)path++ && i-- && (flag=0);

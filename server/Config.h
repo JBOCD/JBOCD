@@ -16,8 +16,8 @@ class Config{
 		char tmpStr[CONFIG_MAX_KEY+1]; //config file key name should not exceed 20 char
 	public:
 		Config();
-		json_object *getFrom(char *path, json_object *curRoot);
-		json_object *get(char *path);
+		json_object *getFrom(const char *path, json_object *curRoot);
+		json_object *get(const char *path);
 };
 
 #include "Config.cpp"
