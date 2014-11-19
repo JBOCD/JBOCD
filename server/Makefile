@@ -1,5 +1,5 @@
 CFLAGS	= $(shell pkg-config --cflags json-c)
-LDFLAGS	= $(shell pkg-config --libs json-c)
+LDFLAGS	= $(shell pkg-config --libs json-c) -lmysqlcppconn
 
 all:
 #	gcc $(CFLAGS) -o main $(LDFLAGS) main.c
