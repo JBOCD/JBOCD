@@ -1,7 +1,7 @@
 #include <cstdio>
 
 #include "Config.h"
-#include "lib/mysql_connection.h"
+#include "MySQL.h"
 #include "Network.h"
 #include "Thread.h"
 #include "Server.h"
