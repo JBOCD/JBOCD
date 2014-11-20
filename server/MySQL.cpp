@@ -5,7 +5,7 @@ MySQL::MySQL(Config* conf){
 	int strLen = 8+strlen(host)+strlen(port);
 	char* conn = new char[strLen];
 	snprintf(conn, strLen, "tcp://%s:%s", host, port);
-	con = driver->connect(conn, json_object_get_string(conf->get("database.MySQL.user")), json_object_get_string(conf->get("database.MySQL.user")));
+	con = driver->connect(conn, json_object_get_string(conf->get("database.MySQL.user")), json_object_get_string(conf->get("database.MySQL.pass")));
 	con->setSchema(json_object_get_string(conf->get("database.MySQL.dbname")));
 }
 MySQL::~MySQL(){

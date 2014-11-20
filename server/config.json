@@ -10,7 +10,7 @@
 {
 	"database":{
 		"MySQL":{
-			"host":"127.0.0.1",
+			"host":"192.168.50.63",
 			"port":"3306",
 			"user":"JBOCDuser",
 			"pass":"JBOCDpass",

@@ -134,9 +134,33 @@ if [ ! -f ${SAVE_STEP_PATH}/lib-apt-install ]; then
 
 	#for mysql
 	sudo apt-get install libmysqlcppconn-dev -y
+
+	#for websocket
+	sudo apt-get install cmake openssl libssl-dev -y
+
 #	sudo apt-get isntall gcc clang libtool autoconf automake
 	touch ${SAVE_STEP_PATH}/lib-apt-install
 fi
+
+echo Downloading WebScoket \(libwebsockets\)
+if [ ! -f ${SAVE_STEP_PATH}/lib-websocket-download ]; then
+	sudo rm -r $TEMP/*
+	cd $TEMP
+	wget http://git.libwebsockets.org/cgi-bin/cgit/libwebsockets/snapshot/libwebsockets-1.3-chrome37-firefox30.tar.gz
+
+
+	echo Compiling WebScoket \(libwebsockets\)
+	tar zxvf libwebsockets-1.3-chrome37-firefox30.tar.gz
+	rm libwebsockets-1.3-chrome37-firefox30.tar.gz
+	cd libwebsockets-1.3-chrome37-firefox30/
+	mkdir build
+	cd build
+	sudo cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr/local ..
+	sudo make
+	exit 0
+fi
+
+
 
 echo Downloading JBOCD
 
