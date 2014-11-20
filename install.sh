@@ -155,9 +155,8 @@ if [ ! -f ${SAVE_STEP_PATH}/lib-websocket-download ]; then
 	cd libwebsockets-1.3-chrome37-firefox30/
 	mkdir build
 	cd build
-	sudo cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr/local ..
-	sudo make
-	exit 0
+	sudo cmake --prefix=/usr/local ..
+	sudo make; sudo make install
 fi
 
 
