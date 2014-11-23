@@ -5,6 +5,7 @@
 #include "Network.h"
 #include "Thread.h"
 #include "Server.h"
+#include "WebSocket.h"
 
 using namespace std;
 

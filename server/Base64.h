@@ -8,7 +8,7 @@ class Base64{
 		Base64();
 		static const char const* base64_chars;
 	public:
-		static char* encode(unsigned const char* in, char* out); // input len should always 16
+		static char* encode(unsigned const char* in, char* out); // input len should always 20
 //		static char* decode(unsigned const char* in, char* out); // not implement
 };
 

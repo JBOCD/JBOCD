@@ -33,6 +33,7 @@
 		// we are now tend to crop the message info multi-chunk in file transfering
 		//     to balance server read buffer size and network efficiency
 		// command sending is always less than 1KB
-		"maxPackageSize": 8956
+		"maxPackageSize": 8960,
+		"maxContentSize": 8956
 	}
 }
