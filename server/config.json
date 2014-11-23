@@ -22,5 +22,17 @@
 	},
 	"cloudDriver":{
 		// INSTALL DRIVER
+	},
+	"socket":{
+		// max offload of Standard frame with TCP = 1460 Bytes
+		// max offload of Jumbo frame with TCP = 8960 Bytes
+		// websocket header:
+		//     2 Bytes (for size between 0 and 125 )
+		//     4 Bytes (for size between 126 and 65535 )
+		//     8 Bytes (for size between 65536 and 2^64-1 )
+		// we are now tend to crop the message info multi-chunk in file transfering
+		//     to balance server read buffer size and network efficiency
+		// command sending is always less than 1KB
+		"maxPackageSize": 8956
 	}
 }

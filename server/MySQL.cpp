@@ -7,6 +7,7 @@ MySQL::MySQL(Config* conf){
 	snprintf(conn, strLen, "tcp://%s:%s", host, port);
 	con = driver->connect(conn, json_object_get_string(conf->get("database.MySQL.user")), json_object_get_string(conf->get("database.MySQL.pass")));
 	con->setSchema(json_object_get_string(conf->get("database.MySQL.dbname")));
+	delete conn;
 }
 MySQL::~MySQL(){
 	delete con;
