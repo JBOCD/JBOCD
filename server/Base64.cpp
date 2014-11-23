@@ -1,4 +1,4 @@
-Base64::encode(unsigned const char* in, char* out){ //specific to 16 bytes input
+void Base64::encode(const unsigned char* in, char* out){ //specific to 20 bytes input
 	int i=0;
 	int j=0;
 	int outLen=0;

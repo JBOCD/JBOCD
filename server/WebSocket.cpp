@@ -1,4 +1,4 @@
-WebSocket::init(){
+void WebSocket::init(){
 	WebSocket::MAX_PACKAGE_SIZE = json_object_get_int(conf->get("socket.maxPackageSize"));
 	WebSocket::MAX_CONTENT_SIZE = json_object_get_int(conf->get("socket.maxContentSize"));
 }
@@ -45,7 +45,7 @@ int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, 
 	delete buf_2;
 }
 int WebSocket::recv(int fd, unsigned char* buf, int size, bool isWait, long* payloadLen, int* err){
-	int readLen = recv(fd, buf, size, isWait ? 0 : MSG_DONTWAIT);
+	int readLen = std::recv(fd, buf, size, isWait ? 0 : MSG_DONTWAIT);
 	if(!isWait){
 		// continue read
 		// nothing done
@@ -73,7 +73,8 @@ int WebSocket::recv(int fd, unsigned char* buf, int size, bool isWait, long* pay
 	return readLen;
 }
 int WebSocket::send(unsigned char* buf, unsigned char* msg, long len){
-	int headerLen;
+	int totalLen;
+
 	*buf=0x82;
 	if(len<126){
 		totalLen = 2; // 1 byte fin+opcode && 1 byte payload
@@ -81,13 +82,13 @@ int WebSocket::send(unsigned char* buf, unsigned char* msg, long len){
 		buf = buf+2;
 	}else if(len<65536){
 		totalLen = 4; // 1 byte fin+opcode && 1+2 bytes payload
-		*(buf+1)=0x7E;
-		Network::toBytes((short) len, *(buf+2));
+		*(buf+1)=(unsigned char) 0x7E;
+		Network::toBytes((short) len, buf+2);
 		buf = buf+4;
 	}else{
 		totalLen = 10; // 1 byte fin+opcode && 1+8 bytes payload
-		*(buf+1)=0x7F;
-		Network::toBytes(len, *(buf+2));
+		*(buf+1)=(unsigned char) 0x7F;
+		Network::toBytes(len, buf+2);
 		buf = buf+10;
 	}
 	memcpy(buf, msg, len);

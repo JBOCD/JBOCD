@@ -6,13 +6,13 @@
 class Base64{
 	private:
 		Base64();
-		static const char const* base64_chars;
+		static char * base64_chars;
 	public:
-		static char* encode(unsigned const char* in, char* out); // input len should always 20
+		static void encode(const unsigned char* in, char* out); // input len should always 20
 //		static char* decode(unsigned const char* in, char* out); // not implement
 };
 
-const char const* Base64::base64_chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+char * Base64::base64_chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 #include "Base64.cpp"
 
