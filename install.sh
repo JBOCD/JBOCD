@@ -87,26 +87,26 @@ if [ "$SET_PROXY" = "y" ]; then
 	echo Changing Proxy Setting
 	cd "$SAVE_STEP_PATH"
 	tmp=0
-	if [ "`cat /etc/environment | grep http_proxy`" != "http_proxy=\"$SET_HTTP_PROXY\"" ]; then
+	if [ "`cat ~/.bashrc | grep http_proxy`" != "http_proxy=\"$SET_HTTP_PROXY\"" ]; then
 		if [ "$PERNAMENT_PROXY" = "y" ]; then
-			sudo bash -c "echo http_proxy=\"$SET_HTTP_PROXY\" >> /etc/environment"
-			sudo bash -c "echo HTTP_PROXY=\"$SET_HTTP_PROXY\" >> /etc/environment"
+			sudo bash -c "echo http_proxy=\"$SET_HTTP_PROXY\" >> ~/.bashrc"
+			sudo bash -c "echo HTTP_PROXY=\"$SET_HTTP_PROXY\" >> ~/.bashrc"
 			tmp=1
 		fi
 		export http_proxy=$SET_HTTP_PROXY
 	fi
-	if [ "`cat /etc/environment | grep https_proxy`" != "https_proxy=\"$SET_HTTPS_PROXY\"" ]; then
+	if [ "`cat ~/.bashrc | grep https_proxy`" != "https_proxy=\"$SET_HTTPS_PROXY\"" ]; then
 		if [ "$PERNAMENT_PROXY" = "y" ]; then
-			sudo bash -c "echo https_proxy=\"$SET_HTTPS_PROXY\" >> /etc/environment"
-			sudo bash -c "echo HTTPS_PROXY=\"$SET_HTTPS_PROXY\" >> /etc/environment"
+			sudo bash -c "echo https_proxy=\"$SET_HTTPS_PROXY\" >> ~/.bashrc"
+			sudo bash -c "echo HTTPS_PROXY=\"$SET_HTTPS_PROXY\" >> ~/.bashrc"
 			tmp=1
 		fi
 		export https_proxy=$SET_HTTPS_PROXY
 	fi
-	if [ "`cat /etc/environment | grep ftp_proxy`" != "ftp_proxy=\"$SET_FTP_PROXY\"" ]; then
+	if [ "`cat ~/.bashrc | grep ftp_proxy`" != "ftp_proxy=\"$SET_FTP_PROXY\"" ]; then
 		if [ "$PERNAMENT_PROXY" = "y" ]; then
-			sudo bash -c "echo ftp_proxy=\"$SET_FTP_PROXY\" >> /etc/environment"
-			sudo bash -c "echo FTP_PROXY=\"$SET_FTP_PROXY\" >> /etc/environment"
+			sudo bash -c "echo ftp_proxy=\"$SET_FTP_PROXY\" >> ~/.bashrc"
+			sudo bash -c "echo FTP_PROXY=\"$SET_FTP_PROXY\" >> ~/.bashrc"
 			tmp=1
 		fi
 		export ftp_proxy=$SET_FTP_PROXY
@@ -115,7 +115,7 @@ if [ "$SET_PROXY" = "y" ]; then
 		if [ "$IS_AUTO_INSTALL" != "y" ] && [ "$PERMANENT_PROXY" = "y" ]; then
 			echo The System is update the proxy
 			echo setting. After installing, please
-			echo reboot this computer to apply the
+			echo relogin this account to apply the
 			echo setting for other program.
 			echo 
 			pause
@@ -136,30 +136,11 @@ if [ ! -f ${SAVE_STEP_PATH}/lib-apt-install ]; then
 	sudo apt-get install libmysqlcppconn-dev -y
 
 	#for websocket
-	sudo apt-get install cmake openssl libssl-dev -y
+	sudo apt-get install openssl libssl-dev -y
 
 #	sudo apt-get isntall gcc clang libtool autoconf automake
 	touch ${SAVE_STEP_PATH}/lib-apt-install
 fi
-
-echo Downloading WebScoket \(libwebsockets\)
-if [ ! -f ${SAVE_STEP_PATH}/lib-websocket-download ]; then
-	sudo rm -r $TEMP/*
-	cd $TEMP
-	wget http://git.libwebsockets.org/cgi-bin/cgit/libwebsockets/snapshot/libwebsockets-1.3-chrome37-firefox30.tar.gz
-
-
-	echo Compiling WebScoket \(libwebsockets\)
-	tar zxvf libwebsockets-1.3-chrome37-firefox30.tar.gz
-	rm libwebsockets-1.3-chrome37-firefox30.tar.gz
-	cd libwebsockets-1.3-chrome37-firefox30/
-	mkdir build
-	cd build
-	sudo cmake --prefix=/usr/local ..
-	sudo make; sudo make install
-fi
-
-
 
 echo Downloading JBOCD
 
@@ -175,13 +156,13 @@ make clean BUILD=$BUILD; make BUILD=$BUILD
 
 echo Setting up JBOCD
 [ ! -d /etc/JBOCD ] && sudo mkdir /etc/JBOCD
-sudo cp /etc/JBOCD/config.json /etc/JBOCD/config.json.bak
+[ -f /etc/JBOCD/config.json ] && sudo cp /etc/JBOCD/config.json /etc/JBOCD/config.json.bak
 sudo cp config.json /etc/JBOCD/config.json
 sudo chmod 644 /etc/JBOCD/config.json
 
 echo "Installation completed"
 
-if [ ! -f /etc/JBOCD/config.json.bak ]; then
+if [ -f /etc/JBOCD/config.json.bak ]; then
 	echo 
 	echo 'Your previous config file is backuped as "config.json.bak"'
 	echo 'Go to /etc/JBOCD/ to reconfig the JBOCD'
