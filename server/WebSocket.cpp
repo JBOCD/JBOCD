@@ -1,4 +1,4 @@
-void WebSocket::init(){
+void WebSocket::init(Config* conf){
 	WebSocket::MAX_PACKAGE_SIZE = json_object_get_int(conf->get("socket.maxPackageSize"));
 	WebSocket::MAX_CONTENT_SIZE = json_object_get_int(conf->get("socket.maxContentSize"));
 }
@@ -11,7 +11,7 @@ int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, 
 	bool isHandle = false;
 	err && (*err = WebSocket::ERR_NO_ERR);
 
-	while(sscanf(str, "%[^:\r]: %s\r\n",buf_1,buf_2)){
+	while(sscanf(request, "%[^:\r]: %s\r\n",buf_1,buf_2)){
 		switch(*buf_1){
 			case 'S':
 				if(sscanf(buf_1, "Sec-WebSocket-%s", buf_1)){
@@ -20,11 +20,11 @@ int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, 
 							strncpy(buf_2+24,WebSocket::WS_GUID, 36);
 							SHA1((unsigned char*)buf_2,60, (unsigned char*)buf_1);
 							Base64::encode((unsigned char*)buf_1, buf_2);
-							sprintf(buf, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: %.28s\r\nSec-WebSocket-Protocol: JBOCD\r\n\r\n", buf_2);
+							sprintf((char*)buf, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: %.28s\r\nSec-WebSocket-Protocol: JBOCD\r\n\r\n", buf_2);
 							isHandle = true;
 							break;
 						case 'V':
-							if(sscanf(buf_2,"%d",tmp)){
+							if(sscanf(buf_2,"%d",&tmp)){
 								(tmp != 13) && err && (*err |= ERR_VER_MISMATCH);
 							}
 							break;
@@ -44,8 +44,8 @@ int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, 
 	delete buf_1;
 	delete buf_2;
 }
-int WebSocket::recv(int fd, unsigned char* buf, int size, bool isWait, long* payloadLen, int* err){
-	int readLen = std::recv(fd, buf, size, isWait ? 0 : MSG_DONTWAIT);
+int WebSocket::recv(int fd, unsigned char* buf, int size, bool isWait,  long long* payloadLen, int* err){
+	int readLen = recv(fd, buf, size, isWait ? 0 : MSG_DONTWAIT);
 	if(!isWait){
 		// continue read
 		// nothing done
@@ -55,10 +55,10 @@ int WebSocket::recv(int fd, unsigned char* buf, int size, bool isWait, long* pay
 	}else if( ! (*(buf+1) & 0x80) ){
 		// close connection with error
 		// mask is not 1
-		err & (*err |= ERR_WRONG_WS_PROTOCOL);
+		err && (*err |= ERR_WRONG_WS_PROTOCOL);
 	}else{
 		// check mask code == 1
-		*payloadLen = (long) (*(buf+1) & 0x7F);
+		*payloadLen = (long long) (*(buf+1) & 0x7F);
 		if(*payloadLen < 126){
 // in == buf + 6
 // out == buf
@@ -72,7 +72,7 @@ int WebSocket::recv(int fd, unsigned char* buf, int size, bool isWait, long* pay
 	}
 	return readLen;
 }
-int WebSocket::send(unsigned char* buf, unsigned char* msg, long len){
+int WebSocket::send(unsigned char* buf, unsigned char* msg, long long len){
 	int totalLen;
 
 	*buf=0x82;

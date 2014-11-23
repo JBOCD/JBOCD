@@ -20,10 +20,10 @@ class WebSocket{
 		static int MAX_PACKAGE_SIZE;
 		static int MAX_CONTENT_SIZE;
 	public:
-		static void init();
+		static void init(Config* conf);
 		static int  getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err);				// return buffer size
-		static int  recv(int fd, unsigned char* buf, int size, bool isWait, long* payloadLen, int* err);	// return buffer size, errPtr return error code
-		static int  send(unsigned char* buf, unsigned char* msg, long len);									// return buffer size
+		static int  recv(int fd, unsigned char* buf, int size, bool isWait, long long* payloadLen, int* err);	// return buffer size, errPtr return error code
+		static int  send(unsigned char* buf, unsigned char* msg, long long len);									// return buffer size
 		static int  close(unsigned char* buf);																// return buffer size
 };
 
