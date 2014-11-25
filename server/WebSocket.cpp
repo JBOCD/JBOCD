@@ -1,6 +1,6 @@
 void WebSocket::init(Config* conf){
-	WebSocket::MAX_PACKAGE_SIZE = json_object_get_int(conf->get("socket.maxPackageSize"));
-	WebSocket::MAX_CONTENT_SIZE = json_object_get_int(conf->get("socket.maxContentSize"));
+	MAX_PACKAGE_SIZE = json_object_get_int(conf->get("socket.maxPackageSize"));
+	MAX_CONTENT_SIZE = json_object_get_int(conf->get("socket.maxContentSize"));
 }
 
 int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err){
@@ -10,14 +10,14 @@ int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, 
 	char* wsa = new char[28];
 	int tmp;
 	bool isHandle = false;
-	err && (*err = WebSocket::ERR_NO_ERR);
+	err && (*err = ERR_NO_ERR);
 	while(sscanf((char*)request, "%[^:\r]: %s\r\n",buf_1,buf_2)){
 		switch(*buf_1){
 			case 'S':
 				if(sscanf(buf_1, "Sec-WebSocket-%s", buf_1)){
 					switch(*buf_1){
 						case 'K':
-							strncpy(buf_2+24,WebSocket::WS_GUID, 36);
+							strncpy(buf_2+24,WS_GUID, 36);
 							SHA1((unsigned char*)buf_2,60, (unsigned char*)buf_1);
 							Base64::encode((unsigned char*)buf_1, wsa);
 							isHandle = true;
@@ -49,12 +49,12 @@ int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, 
 }
 int WebSocket::getMsg(int fd, unsigned char* buf, int size, bool isContinue,  long long* payloadLen, unsigned char* maskKey, int* err){
 	int readLen = recv(fd, buf, size, isContinue ? 0 : MSG_DONTWAIT);
-	*err = WebSocket::ERR_NO_ERR;
+	*err = ERR_NO_ERR;
 	if(!isContinue){
 		// continue read
 		// nothing done
 		// bye
-		WebSocket::decode(buf, buf, maskKey, readLen);
+		decode(buf, buf, maskKey, readLen);
 		*payloadLen -= readLen;
 	}else if(buf[0] & 0x08){
 		// close connection opcode
@@ -69,7 +69,7 @@ int WebSocket::getMsg(int fd, unsigned char* buf, int size, bool isContinue,  lo
 		buf[1] = 0;
 		readLen = 1;
 		*payloadLen = 1;
-		err && (*err |= WebSocket::ERR_WRONG_WS_PROTOCOL);
+		err && (*err |= ERR_WRONG_WS_PROTOCOL);
 	}else{
 		*payloadLen = (long long) (buf[1] & 0x7F);
 		if(*payloadLen < 126){
@@ -77,21 +77,21 @@ int WebSocket::getMsg(int fd, unsigned char* buf, int size, bool isContinue,  lo
 			maskKey[1] = buf[3];
 			maskKey[2] = buf[4];
 			maskKey[3] = buf[5];
-			WebSocket::decode(buf+6, buf, maskKey, readLen-=6);
+			decode(buf+6, buf, maskKey, readLen-=6);
 		}else if(*payloadLen == 126){
 			*payloadLen=Network::toShort(buf+2);
 			maskKey[0] = buf[4];
 			maskKey[1] = buf[5];
 			maskKey[2] = buf[6];
 			maskKey[3] = buf[7];
-			WebSocket::decode(buf+8, buf, maskKey, readLen-=8);
+			decode(buf+8, buf, maskKey, readLen-=8);
 		}else{
 			*payloadLen=Network::toLongLong(buf+2);
 			maskKey[0] = buf[10];
 			maskKey[1] = buf[11];
 			maskKey[2] = buf[12];
 			maskKey[3] = buf[13];
-			WebSocket::decode(buf+14, buf, maskKey, readLen-=14);
+			decode(buf+14, buf, maskKey, readLen-=14);
 		}
 	}
 	return readLen;

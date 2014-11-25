@@ -14,6 +14,8 @@ class WebSocket{
 		WebSocket();
 		static const char * const WS_GUID;
 
+		static void decode(unsigned char* in, unsigned char* out, unsigned char* maskKey, int len);
+	public:
 		static const int ERR_NO_ERR;
 		static const int ERR_VER_MISMATCH;
 		static const int ERR_NOT_WEBSOCKET;
@@ -22,8 +24,6 @@ class WebSocket{
 		static int MAX_PACKAGE_SIZE;
 		static int MAX_CONTENT_SIZE;
 
-		static void decode(unsigned char* in, unsigned char* out, unsigned char* maskKey, int len);
-	public:
 		static void init(Config* conf);
 		static int  getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err);						// return buffer size, err return error code, request == buf is safe
 		static int  getMsg(int fd, unsigned char* buf, int size, bool isContinue, long long* payloadLen, unsigned char* maskKey, int* err);	// return buffer size, err return error code
