@@ -101,7 +101,6 @@ int WebSocket::getMsg(int fd, unsigned char* buf, int size, bool isContinue,  lo
 int WebSocket::sendMsg(unsigned char* buf, unsigned char* msg, long long len){
 	int insertLen;
 
-	buf[0]=0x82;
 	if(len<126){
 		memmove(buf+(insertLen=2), msg, len); // 1 byte fin+opcode && 1 byte payload
 		buf[1]=(unsigned char) len;
@@ -114,6 +113,7 @@ int WebSocket::sendMsg(unsigned char* buf, unsigned char* msg, long long len){
 		buf[1]=(unsigned char) 0x7F;
 		Network::toBytes(len, buf+2);
 	}
+	buf[0]=0x82;
 	return len+insertLen;
 }
 int WebSocket::close(unsigned char* buf){

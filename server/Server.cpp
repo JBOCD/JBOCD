@@ -17,7 +17,7 @@ Server::Server(Config* conf){
 
 		printf("Binding Server to port %d ...\n", port);
 		if( bind(sockfd, (struct sockaddr*)&server, sizeof(server)) < 0){ 
-			perror("Bind failed.");
+			perror("Bind failed");
 			exit(1);
 		}else{
 			printf("Start Listening ... \n");
@@ -65,7 +65,7 @@ void* Server::client_thread(void* in){
 						putchar(buffer[i]);
 					}
 					memcpy(buffer, "hello world", 12);
-					WebSocket::sendMsg(buffer, buffer, 12);
+					send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 12), 0);
 			}
 
 			// err handling
