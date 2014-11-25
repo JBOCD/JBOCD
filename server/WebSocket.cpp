@@ -6,7 +6,7 @@ void WebSocket::init(Config* conf){
 int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err){
 	int len = 0;
 	char* buf_1 = new char[28];
-	char* buf_2 = new char[28];
+	char* buf_2 = new char[512];
 	char* wsa = new char[28];
 	int tmp;
 	bool isHandle = false;
