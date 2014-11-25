@@ -39,6 +39,8 @@ const int WebSocket::ERR_NO_ERR=0;
 const int WebSocket::ERR_VER_MISMATCH=1;
 const int WebSocket::ERR_NOT_WEBSOCKET=2;
 const int WebSocket::ERR_WRONG_WS_PROTOCOL=4;
+int MAX_PACKAGE_SIZE = 0;
+int MAX_CONTENT_SIZE = 0;
 //static const int WebSocket::ERR_?=4; //next error code 2^n
 
 #include "WebSocket.cpp"
