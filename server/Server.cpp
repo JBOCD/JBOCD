@@ -64,13 +64,13 @@ void* Server::client_thread(void* in){
 					for(int i=0;i<readLen;i++){
 						putchar(buffer[i]);
 					}
-					sendMsg(buffer, "hello world", 12);
+					WebSocket::sendMsg(buffer, "hello world", 12);
 			}
 
 			// err handling
-			if(err & ERR_VER_MISMATCH) printf("WebSocket Version not match.\n");
-			if(err & ERR_NOT_WEBSOCKET) printf("Connection is not WebScoket.\n");
-			if(err & ERR_WRONG_WS_PROTOCOL) printf("WebSocket Protocol Error, Client Package have no mask.\n");
+			if(err & WebSocket::ERR_VER_MISMATCH) printf("WebSocket Version not match.\n");
+			if(err & WebSocket::ERR_NOT_WEBSOCKET) printf("Connection is not WebScoket.\n");
+			if(err & WebSocket::ERR_WRONG_WS_PROTOCOL) printf("WebSocket Protocol Error, Client Package have no mask.\n");
 		}while( (isCont=recvLen!=readLen));
 	}while(!isEnd);
 	free(buffer);

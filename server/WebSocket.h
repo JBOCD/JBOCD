@@ -2,6 +2,8 @@
 #define WEBSOCKET_H
 
 #include <cstring>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <openssl/sha.h>
 #include "Base64.h"
 
