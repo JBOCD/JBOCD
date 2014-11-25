@@ -64,7 +64,8 @@ void* Server::client_thread(void* in){
 					for(int i=0;i<readLen;i++){
 						putchar(buffer[i]);
 					}
-					WebSocket::sendMsg(buffer, "hello world", 12);
+					memcpy(buffer, "hello world", 12);
+					WebSocket::sendMsg(buffer, buffer, 12);
 			}
 
 			// err handling
