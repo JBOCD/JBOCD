@@ -46,11 +46,13 @@ int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, 
 	delete []buf_1;
 	delete []buf_2;
 	delete []wsa;
+
+	return 160;
 }
 int WebSocket::getMsg(int fd, unsigned char* buf, int size, bool isContinue,  long long* payloadLen, unsigned char* maskKey, int* err){
-	int readLen = recv(fd, buf, size, isContinue ? 0 : MSG_DONTWAIT);
+	int readLen = recv(fd, buf, size, isContinue ? MSG_DONTWAIT : 0);
 	*err = ERR_NO_ERR;
-	if(!isContinue){
+	if(isContinue){
 		// continue read
 		// nothing done
 		// bye
