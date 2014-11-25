@@ -43,9 +43,9 @@ int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, 
 		&& sprintf((char*)buf, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: %.28s\r\nSec-WebSocket-Protocol: JBOCD\r\n\r\n", wsa)
 		|| ( err && (*err |= ERR_NOT_WEBSOCKET) );
 
-	delete buf_1;
-	delete buf_2;
-	delete wsa;
+	delete []buf_1;
+	delete []buf_2;
+	delete []wsa;
 }
 int WebSocket::getMsg(int fd, unsigned char* buf, int size, bool isContinue,  long long* payloadLen, unsigned char* maskKey, int* err){
 	int readLen = recv(fd, buf, size, isContinue ? 0 : MSG_DONTWAIT);
