@@ -23,7 +23,7 @@ int main() {
 	// connect to DB
 	new MySQL(config);
 	// init WebSocket
-	WebSocket::init(conf);
+	WebSocket::init(config);
 	// start server
 	new Server(config);
 }

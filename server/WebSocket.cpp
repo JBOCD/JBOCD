@@ -11,11 +11,11 @@ int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, 
 	int tmp;
 	bool isHandle = false;
 	err && (*err = WebSocket::ERR_NO_ERR);
-	while(sscanf(request, "%[^:\r]: %s\r\n",buf_1,buf_2)){
+	while(sscanf((char*)request, "%[^:\r]: %s\r\n",buf_1,buf_2)){
 		switch(*buf_1){
 			case 'S':
 				if(sscanf(buf_1, "Sec-WebSocket-%s", buf_1)){
-					switch(buf_1){
+					switch(*buf_1){
 						case 'K':
 							strncpy(buf_2+24,WebSocket::WS_GUID, 36);
 							SHA1((unsigned char*)buf_2,60, (unsigned char*)buf_1);
@@ -101,14 +101,14 @@ int WebSocket::sendMsg(unsigned char* buf, unsigned char* msg, long long len){
 
 	buf[0]=0x82;
 	if(len<126){
-		memmove(buf+(insertLen=2);, msg, len); // 1 byte fin+opcode && 1 byte payload
+		memmove(buf+(insertLen=2), msg, len); // 1 byte fin+opcode && 1 byte payload
 		buf[1]=(unsigned char) len;
 	}else if(len<65536){
-		memmove(buf+(insertLen=4);, msg, len); // 1 byte fin+opcode && 1+2 bytes payload
+		memmove(buf+(insertLen=4), msg, len); // 1 byte fin+opcode && 1+2 bytes payload
 		buf[1]=(unsigned char) 0x7E;
 		Network::toBytes((short) len, buf+2);
 	}else{
-		memmove(buf+(insertLen=10);, msg, len); // 1 byte fin+opcode && 1+8 bytes payload
+		memmove(buf+(insertLen=10), msg, len); // 1 byte fin+opcode && 1+8 bytes payload
 		buf[1]=(unsigned char) 0x7F;
 		Network::toBytes(len, buf+2);
 	}
