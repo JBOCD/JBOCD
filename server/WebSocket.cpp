@@ -5,12 +5,12 @@ void WebSocket::init(Config* conf){
 
 int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err){
 	int len = 0;
-	char* buf_1 = new char[61];
-	char* buf_2 = new char[61];
+	char* buf_1 = new char[28];
+	char* buf_2 = new char[28];
+	char* wsa = new char[28];
 	int tmp;
 	bool isHandle = false;
 	err && (*err = WebSocket::ERR_NO_ERR);
-
 	while(sscanf(request, "%[^:\r]: %s\r\n",buf_1,buf_2)){
 		switch(*buf_1){
 			case 'S':
@@ -19,13 +19,12 @@ int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, 
 						case 'K':
 							strncpy(buf_2+24,WebSocket::WS_GUID, 36);
 							SHA1((unsigned char*)buf_2,60, (unsigned char*)buf_1);
-							Base64::encode((unsigned char*)buf_1, buf_2);
-							sprintf((char*)buf, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: %.28s\r\nSec-WebSocket-Protocol: JBOCD\r\n\r\n", buf_2);
+							Base64::encode((unsigned char*)buf_1, wsa);
 							isHandle = true;
 							break;
 						case 'V':
 							if(sscanf(buf_2,"%d",&tmp)){
-								(tmp != 13) && err && (*err |= ERR_VER_MISMATCH);
+								tmp != 13 && err && (*err |= ERR_VER_MISMATCH);
 							}
 							break;
 					}
@@ -33,69 +32,107 @@ int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, 
 				break;
 		}
 		while(1){
-			if(*str == '\r' && *(str+1) == '\n'){
-				str+=2;
+			if(*request == '\r' && *(request+1) == '\n'){
+				request+=2;
 				break;
 			}
-			str++;
+			request++;
 		}
 	}
-	isHandle || err && (*err |= ERR_NOT_WEBSOCKET);
+	isHandle
+		&& sprintf((char*)buf, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: %.28s\r\nSec-WebSocket-Protocol: JBOCD\r\n\r\n", wsa)
+		|| ( err && (*err |= ERR_NOT_WEBSOCKET) );
+
 	delete buf_1;
 	delete buf_2;
+	delete wsa;
 }
-int WebSocket::recv(int fd, unsigned char* buf, int size, bool isWait,  long long* payloadLen, int* err){
-	int readLen = recv(fd, buf, size, isWait ? 0 : MSG_DONTWAIT);
-	if(!isWait){
+int WebSocket::getMsg(int fd, unsigned char* buf, int size, bool isContinue,  long long* payloadLen, unsigned char* maskKey, int* err){
+	int readLen = recv(fd, buf, size, isContinue ? 0 : MSG_DONTWAIT);
+	*err = WebSocket::ERR_NO_ERR;
+	if(!isContinue){
 		// continue read
 		// nothing done
 		// bye
-	}else if((*buf) & 0x08){
+		WebSocket::decode(buf, buf, maskKey, readLen);
+		*payloadLen -= readLen;
+	}else if(buf[0] & 0x08){
 		// close connection opcode
-	}else if( ! (*(buf+1) & 0x80) ){
+		buf[0] = 0xFF;
+		buf[1] = 0;
+		readLen=1;
+		*payloadLen=1;
+	}else if( ! (buf[1] & 0x80) ){
 		// close connection with error
 		// mask is not 1
-		err && (*err |= ERR_WRONG_WS_PROTOCOL);
+		buf[0] = 0xFF;
+		buf[1] = 0;
+		readLen = 1;
+		*payloadLen = 1;
+		err && (*err |= WebSocket::ERR_WRONG_WS_PROTOCOL);
 	}else{
-		// check mask code == 1
-		*payloadLen = (long long) (*(buf+1) & 0x7F);
+		*payloadLen = (long long) (buf[1] & 0x7F);
 		if(*payloadLen < 126){
-// in == buf + 6
-// out == buf
+			maskKey[0] = buf[2];
+			maskKey[1] = buf[3];
+			maskKey[2] = buf[4];
+			maskKey[3] = buf[5];
+			WebSocket::decode(buf+6, buf, maskKey, readLen-=6);
 		}else if(*payloadLen == 126){
-// in == buf + 8
-// out == buf
+			*payloadLen=Network::toShort(buf+2);
+			maskKey[0] = buf[4];
+			maskKey[1] = buf[5];
+			maskKey[2] = buf[6];
+			maskKey[3] = buf[7];
+			WebSocket::decode(buf+8, buf, maskKey, readLen-=8);
 		}else{
-// in == buf + 14
-// out == buf
+			*payloadLen=Network::toLongLong(buf+2);
+			maskKey[0] = buf[10];
+			maskKey[1] = buf[11];
+			maskKey[2] = buf[12];
+			maskKey[3] = buf[13];
+			WebSocket::decode(buf+14, buf, maskKey, readLen-=14);
 		}
 	}
 	return readLen;
 }
-int WebSocket::send(unsigned char* buf, unsigned char* msg, long long len){
-	int totalLen;
+int WebSocket::sendMsg(unsigned char* buf, unsigned char* msg, long long len){
+	int insertLen;
 
-	*buf=0x82;
+	buf[0]=0x82;
 	if(len<126){
-		totalLen = 2; // 1 byte fin+opcode && 1 byte payload
-		*(buf+1)=(unsigned char) len;
-		buf = buf+2;
+		memmove(buf+(insertLen=2);, msg, len); // 1 byte fin+opcode && 1 byte payload
+		buf[1]=(unsigned char) len;
 	}else if(len<65536){
-		totalLen = 4; // 1 byte fin+opcode && 1+2 bytes payload
-		*(buf+1)=(unsigned char) 0x7E;
+		memmove(buf+(insertLen=4);, msg, len); // 1 byte fin+opcode && 1+2 bytes payload
+		buf[1]=(unsigned char) 0x7E;
 		Network::toBytes((short) len, buf+2);
-		buf = buf+4;
 	}else{
-		totalLen = 10; // 1 byte fin+opcode && 1+8 bytes payload
-		*(buf+1)=(unsigned char) 0x7F;
+		memmove(buf+(insertLen=10);, msg, len); // 1 byte fin+opcode && 1+8 bytes payload
+		buf[1]=(unsigned char) 0x7F;
 		Network::toBytes(len, buf+2);
-		buf = buf+10;
 	}
-	memcpy(buf, msg, len);
-	return len+totalLen;
+	return len+insertLen;
 }
 int WebSocket::close(unsigned char* buf){
-	*buf=0x88; // fin=1; opcode=8
-	*(buf+1)=0;
+	buf[0]=0x88; // fin=1; opcode=8
+	buf[1]=0;
 	return 2;
+}
+
+void WebSocket::decode(unsigned char* in, unsigned char* out, unsigned char* maskKey, int len){
+	int i=0, j=len/4;
+	for(;i<j;i++){
+		out[0] = in[0] ^ maskKey[0];
+		out[1] = in[1] ^ maskKey[1];
+		out[2] = in[2] ^ maskKey[2];
+		out[3] = in[3] ^ maskKey[3];
+
+		out+=4;	in+=4;
+	}
+	j=len%4;
+	for(i=0;i<j;i++){
+		out[i] = in[i] ^ maskKey[i];
+	}
+
 }

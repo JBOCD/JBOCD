@@ -38,10 +38,43 @@ Server::Server(Config* conf){
 
 void* Server::client_thread(void* in){
 	struct client_info* conf = (struct client_info*) in;
-	const char* str = "ggwp\n";
-//				snprintf(sendBuff, sizeof(sendBuff), "%.24s\r\n", ctime(&ticks));
-	write(conf->connfd, str, strlen(str));
-	// end thread
+	long long recvLen=0;
+	int readLen=0, err;
+	unsigned char maskKey[4];
+	unsigned char* buffer = (unsigned char*) malloc(WebSocket::MAX_PACKAGE_SIZE);
+	bool isCont = false;
+	bool isEnd = false;
+
+	// debug variable
+	int msgNum = 0;
+//	if not using websocket, how to confirm message exact size in our protocol?
+	recv(conf->connfd, buffer, WebSocket::MAX_PACKAGE_SIZE, 0);
+	write(conf->connfd, buffer, WebSocket::getHandShakeResponse(buffer, buffer, &err));
+	do{
+		msgNum++;
+		isCont = recvLen!=readLen; // if recvLen != readLen, then isCont == true, it mean it continue to read;
+		do{
+			// forget to update recvLen?
+			readLen = WebSocket::getMsg(conf->connfd, buffer, WebSocket::MAX_PACKAGE_SIZE, isCont, &recvLen, maskKey, &err);
+			switch(*buffer){
+				case 0xFF:
+					isEnd = true;
+					break; 
+				default:
+					for(int i=0;i<readLen;i++){
+						putchar(buffer[i]);
+					}
+					sendMsg(buffer, "hello world", 12);
+			}
+
+			// err handling
+			if(err & ERR_VER_MISMATCH) printf("WebSocket Version not match.\n");
+			if(err & ERR_NOT_WEBSOCKET) printf("Connection is not WebScoket.\n");
+			if(err & ERR_WRONG_WS_PROTOCOL) printf("WebSocket Protocol Error, Client Package have no mask.\n");
+		}while( (isCont=recvLen!=readLen));
+	}while(!isEnd);
+	free(buffer);
 	close(conf->connfd);
+	// end thread
 	Thread::addDelQueue((struct thread_queue*) malloc(sizeof(struct thread_queue)),conf->thread, conf);
 }

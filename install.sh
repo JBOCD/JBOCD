@@ -87,26 +87,26 @@ if [ "$SET_PROXY" = "y" ]; then
 	echo Changing Proxy Setting
 	cd "$SAVE_STEP_PATH"
 	tmp=0
-	if [ "`cat ~/.bashrc | grep http_proxy`" != "http_proxy=\"$SET_HTTP_PROXY\"" ]; then
+	if [ "`cat /etc/environment | grep http_proxy`" != "http_proxy=\"$SET_HTTP_PROXY\"" ]; then
 		if [ "$PERNAMENT_PROXY" = "y" ]; then
-			sudo bash -c "echo http_proxy=\"$SET_HTTP_PROXY\" >> ~/.bashrc"
-			sudo bash -c "echo HTTP_PROXY=\"$SET_HTTP_PROXY\" >> ~/.bashrc"
+			sudo bash -c "echo http_proxy=\"$SET_HTTP_PROXY\" >> /etc/environment"
+			sudo bash -c "echo HTTP_PROXY=\"$SET_HTTP_PROXY\" >> /etc/environment"
 			tmp=1
 		fi
 		export http_proxy=$SET_HTTP_PROXY
 	fi
-	if [ "`cat ~/.bashrc | grep https_proxy`" != "https_proxy=\"$SET_HTTPS_PROXY\"" ]; then
+	if [ "`cat /etc/environment | grep https_proxy`" != "https_proxy=\"$SET_HTTPS_PROXY\"" ]; then
 		if [ "$PERNAMENT_PROXY" = "y" ]; then
-			sudo bash -c "echo https_proxy=\"$SET_HTTPS_PROXY\" >> ~/.bashrc"
-			sudo bash -c "echo HTTPS_PROXY=\"$SET_HTTPS_PROXY\" >> ~/.bashrc"
+			sudo bash -c "echo https_proxy=\"$SET_HTTPS_PROXY\" >> /etc/environment"
+			sudo bash -c "echo HTTPS_PROXY=\"$SET_HTTPS_PROXY\" >> /etc/environment"
 			tmp=1
 		fi
 		export https_proxy=$SET_HTTPS_PROXY
 	fi
-	if [ "`cat ~/.bashrc | grep ftp_proxy`" != "ftp_proxy=\"$SET_FTP_PROXY\"" ]; then
+	if [ "`cat /etc/environment | grep ftp_proxy`" != "ftp_proxy=\"$SET_FTP_PROXY\"" ]; then
 		if [ "$PERNAMENT_PROXY" = "y" ]; then
-			sudo bash -c "echo ftp_proxy=\"$SET_FTP_PROXY\" >> ~/.bashrc"
-			sudo bash -c "echo FTP_PROXY=\"$SET_FTP_PROXY\" >> ~/.bashrc"
+			sudo bash -c "echo ftp_proxy=\"$SET_FTP_PROXY\" >> /etc/environment"
+			sudo bash -c "echo FTP_PROXY=\"$SET_FTP_PROXY\" >> /etc/environment"
 			tmp=1
 		fi
 		export ftp_proxy=$SET_FTP_PROXY
