@@ -1,5 +1,5 @@
-CFLAGS	= $(shell pkg-config --cflags json-c)
-LDFLAGS	= $(shell pkg-config --libs json-c) -lmysqlcppconn -lcrypto
+CFLAGS	= 
+LDFLAGS	= -ljson -lmysqlcppconn -lcrypto
 
 #-lmysqlcppconn == Database connector lib
 #-lcrypto == SHA1 lib

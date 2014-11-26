@@ -130,7 +130,8 @@ if [ ! -f ${SAVE_STEP_PATH}/lib-apt-install ]; then
 	sudo apt-get install build-essential git -y
 
 	# for json-c
-	sudo apt-get install libjson0 libjson0-dev libjsoncpp0 libjsoncpp-dev libjson-glib-1.0-0 libjson-glib-dev -y
+	sudo apt-get install libjson0 libjson0-dev -y
+#	sudo apt-get install libjson-glib-1.0-0 libjson-glib-dev -y
 
 	#for mysql
 	sudo apt-get install libmysqlcppconn-dev -y
