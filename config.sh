@@ -11,7 +11,7 @@ IS_AUTO_INSTALL=y
 # only when IS_AUTO_INSTALL=y
 
 # Outgoing network is needed for download CodFS
-SET_PROXY=y
+SET_PROXY=n
 
 # proxy setting
 SET_HTTP_PROXY="http://proxy.cse.cuhk.edu.hk:8000/" 
@@ -20,6 +20,6 @@ SET_FTP_PROXY="http://proxy.cse.cuhk.edu.hk:8000/"
 
 # save proxy setting permanently
 # to apply setting, please reboot the computer
-PERNAMENT_PROXY=y
+PERNAMENT_PROXY=n
 
 # Auto Install config End
