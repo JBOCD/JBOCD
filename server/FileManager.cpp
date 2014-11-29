@@ -1,7 +1,7 @@
-void init(Config* conf){
-	dirpath = conf->get("file.temp.dirpath");
+void FileManager::init(Config* conf){
+	dirpath = json_object_get_string(conf->get("file.temp.dirpath"));
 	char* tmpStr = (char*) malloc(512);
-	sprintf(tmpStr, "rm -r %s ; mkdir %s",dirpath, dirpath);
+	sprintf(tmpStr, "rm -r %s* ; mkdir %s",dirpath, dirpath);
 	system(tmpStr); // -_-!!
 	free(tmpStr);
 }
@@ -25,4 +25,8 @@ void FileManager::freeTemp(int* file){
 	tmp->next=free_list;
 	free_list = tmp;
 	pthread_mutex_unlock(&mutex);
+}
+
+void FileManager::getTempPath(int* file, char* buf){
+	sprintf(buf,"%s%d",dirpath,*file);
 }

@@ -14,10 +14,10 @@ struct file_store{
 class FileManager{
 
 	private:
-		int nameCount;
-		struct file_store* free_list;
+		static int nameCount;
+		static struct file_store* free_list;
 
-		char* dirpath;
+		static const char* dirpath;
 
 		static pthread_mutex_t mutex;
 		FileManager(){}
@@ -28,6 +28,8 @@ class FileManager{
 };
 struct file_store* FileManager::free_list = NULL;
 pthread_mutex_t FileManager::mutex = PTHREAD_MUTEX_INITIALIZER;
+int FileManager::nameCount = 0;
+const char* FileManager::dirpath = 0;
 
 #include "FileManager.cpp"
 

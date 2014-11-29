@@ -38,7 +38,11 @@
 	},
 	"file":{
 		"temp":{
-			"dirpath" : "/var/JBOCD/tmp/" // this directory should be exist and no useful data inside this folder
+			// this directory should have no useful data inside this folder
+			// this path will ERASE before server start
+			// if this path have '/', it will become a folder
+			// if this path have not '/', it will become file prefix
+			"dirpath" : "/var/JBOCD/tmp/" 
 		}
 	}
 }
