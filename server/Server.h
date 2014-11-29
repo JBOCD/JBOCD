@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include "lib/GoogleDrive.h"
 
 #ifndef SERVER_H
 #define SERVER_H

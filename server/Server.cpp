@@ -44,6 +44,8 @@ void* Server::client_thread(void* in){
 	unsigned char* buffer = (unsigned char*) malloc(WebSocket::MAX_PACKAGE_SIZE);
 	bool isCont = false;
 	bool isEnd = false;
+	
+
 
 	// debug variable
 	int msgNum = 0;
@@ -56,8 +58,36 @@ void* Server::client_thread(void* in){
 		do{
 			// forget to update recvLen?
 			readLen = WebSocket::getMsg(conf->connfd, buffer, WebSocket::MAX_PACKAGE_SIZE, isCont, &recvLen, maskKey, &err);
+			// protocol part
 			switch(*buffer){
-				case 0xFF:
+				case 0x00: // 00000000
+/*
+	4 byte int: send account id
+	32byte string: token_hash sha256
+*/
+					// reject first byte = 0x00
+					// always accept
+					*buffer = 0x01;
+					*(buffer+1) = 0x00;
+					send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 2), 0);
+					break;
+				case 0x02: // ls acc req
+				case 0x04: // ls dir req
+					break;
+				case 0x20: // put req first recv part
+					break;
+				case 0x21: // put req continue recv part
+					break;
+				case 0x22: // get req first send part
+					break;
+				case 0x23: // get req continue send part
+					break;
+				case 0x28: // delete file opearation
+
+					break;
+				case 0x2A: // create dir
+					break;
+				case 0x88: // 10001000
 					isEnd = true;
 					break; 
 				default:
