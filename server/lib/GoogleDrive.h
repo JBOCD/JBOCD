@@ -5,10 +5,11 @@
 
 class GoogleDrive: public CDDriver{
 	protected:
-		char* tmpStr; 
+		char* tmpStr;
+		char* accessToken;
 	public:
-		~GoogleDrive() : ~CDDriver();
-		GoogleDrive(char* accessToken) : CDDriver(char* accessToken);
+		~GoogleDrive();
+		GoogleDrive(char* accessToken);
 		int get(char* remotefilePath, char* localfilePath);
 		int put(char* remotefilePath, char* localfilePath);
 		int ls (char* localfilePath);
