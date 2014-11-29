@@ -5,6 +5,7 @@
 #include "Network.h"
 #include "Thread.h"
 #include "WebSocket.h"
+#include "FileManager.h"
 #include "Server.h"
 
 using namespace std;
@@ -24,6 +25,8 @@ int main() {
 	new MySQL(config);
 	// init WebSocket
 	WebSocket::init(config);
+	// init FileManager
+	FileManager::init(config);
 	// start server
 	new Server(config);
 }

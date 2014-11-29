@@ -35,5 +35,10 @@
 		// command sending is always less than 1KB
 		"maxPackageSize": 8960,
 		"maxContentSize": 8956
+	},
+	"file":{
+		"temp":{
+			"dirpath" : "/var/JBOCD/tmp/" // this directory should be exist and no useful data inside this folder
+		}
 	}
 }

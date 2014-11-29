@@ -44,7 +44,8 @@ void* Server::client_thread(void* in){
 	unsigned char* buffer = (unsigned char*) malloc(WebSocket::MAX_PACKAGE_SIZE);
 	bool isCont = false;
 	bool isEnd = false;
-	
+	CDDriver ** dropboxList;
+	CDDriver ** googleDriveList;
 
 
 	// debug variable
