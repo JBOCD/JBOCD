@@ -9,4 +9,8 @@ all:
 	g++ -std=c++0x -pthread -o ${BUILD}/server main.cpp $(CFLAGS) $(LDFLAGS)
 
 clean:
-	rm ${BUILD}/*
+	[ -f ${BUILD}/* ] && rm ${BUILD}/*
+
+default:
+	echo nothing done!
+	exit
