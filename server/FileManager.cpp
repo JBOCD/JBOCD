@@ -1,7 +1,7 @@
 void FileManager::init(Config* conf){
 	dirpath = json_object_get_string(conf->get("file.temp.dirpath"));
 	char* tmpStr = (char*) malloc(512);
-	sprintf(tmpStr, "rm -r %s* ; mkdir -p %s",dirpath, dirpath);
+	sprintf(tmpStr, "rm -r %s* ; mkdir -p -m go-rwx,u=rwx %s",dirpath, dirpath);
 	system(tmpStr); // -_-!!
 	free(tmpStr);
 }
