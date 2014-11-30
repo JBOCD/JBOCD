@@ -7,8 +7,8 @@ Dropbox::Dropbox(const char* accessToken, int id){
 	this->id = id;
 }
 int Dropbox::get(char* remotefilePath, char* localfilePath){
-	sprintf(tmpStr, "%s %s %s %s",
-		"/var/JBOCD/module/dropbox/get.py",
+	sprintf(tmpStr, "%s '%s' '%s' '%s'",
+		"python /var/JBOCD/module/dropbox/get.py",
 		accessToken,
 		remotefilePath,
 		localfilePath
@@ -16,25 +16,26 @@ int Dropbox::get(char* remotefilePath, char* localfilePath){
 	return system(tmpStr);
 }
 int Dropbox::put(char* remotefilePath, char* localfilePath){
-	sprintf(tmpStr, "%s %s %s %s",
-		"/var/JBOCD/module/dropbox/put.py",
+	sprintf(tmpStr, "%s '%s' '%s' '%s'",
+		"python /var/JBOCD/module/dropbox/put.py",
 		accessToken,
 		localfilePath,
 		remotefilePath
 	);
 	return system(tmpStr);
 }
-int Dropbox::ls(char* localfilePath){
-	sprintf(tmpStr, "%s %s %s",
-		"/var/JBOCD/module/dropbox/list.py",
+int Dropbox::ls(char* remotefilePath, char* localfilePath){
+	sprintf(tmpStr, "%s '%s' '%s' '%s'",
+		"python /var/JBOCD/module/dropbox/list.py",
 		accessToken,
-		localfilePath
+		localfilePath,
+		remotefilePath
 	);
 	return system(tmpStr);
 }
 int Dropbox::del(char* remotefilePath){
-	sprintf(tmpStr, "%s %s %s",
-		"/var/JBOCD/module/dropbox/list.py",
+	sprintf(tmpStr, "%s '%s' %s",
+		"python /var/JBOCD/module/dropbox/list.py",
 		accessToken,
 		remotefilePath
 	);

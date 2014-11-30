@@ -52,6 +52,7 @@ void* Server::client_thread(void* in){
 
 	CDDriver ** dropboxList;
 	CDDriver ** googleDriveList;
+	CDDriver ** tmpCDD;
 
 	// database get all list
 	stmt = MySQL::getCon()->createStatement();
@@ -100,7 +101,6 @@ void* Server::client_thread(void* in){
 	unsigned char service;
 	int serviceID;
 	short pathLength;
-	char* path = (char*) malloc(512);
 
 	// for get, put
 	int totalLen, fileRecvTotalLen, packageTotalLen, packageRecvLen, tmpLen;
@@ -133,7 +133,16 @@ void* Server::client_thread(void* in){
 				case 0x04: // ls dir req
 					service = *(buffer+1);
 					serviceID = Network::toInt(buffer+2);
-//6
+					pathLength = Network::toShort(buffer+6);
+					memcpy(remoteFileNameBuf, buffer+8, pathLength);
+					tmpFile = FileManager::newTemp();
+					FileManager::getTempPath(tmpFile, localFileNameBuf);
+					tmpCDD = service ? dropboxList : googleDriveList;
+					i=0;
+					while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID)) i++;
+					if(tmpCDD[i]){
+						tmpCDD->ls(remoteFileNameBuf, localFileNameBuf);
+					}
 					break;
 				case 0x20: // put req first recv part
 					if(!isCont){
@@ -157,7 +166,20 @@ void* Server::client_thread(void* in){
 						packageRecvLen -= readLen;
 					}
 					if(tmpFilefd != -1){
+						fileRecvTotalLen+=tmpLen;
 						write(tmpFilefd,buffer,tmpLen);
+					}
+					if(totalLen == fileRecvTotalLen){
+						// file completed, start uploading
+						close(tmpFilefd);
+						tmpCDD = service ? dropboxList : googleDriveList;
+						i=0;
+						while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID)) i++;
+						if(tmpCDD[i]){
+							tmpCDD->put(remoteFileNameBuf, localFileNameBuf);
+						}
+						FileManager::deleteTemp(tmpFile);
+						tmpFile = 0;
 					}
 					break;
 				case 0x21: // put req continue recv part
@@ -234,6 +256,15 @@ void* Server::client_thread(void* in){
 			case 0x02: // ls acc req
 				break;
 			case 0x04: // ls dir req
+				*buffer = 0x04;
+				if((tmpFilefd = open(localFileNameBuf,O_RDONLY)) != -1){
+					Network::toBytes((int) lseek(tmpFilefd, 0L, SEEK_END)+1, buffer+1);
+					lseek(tmpFilefd, 0L, SEEK_SET);
+					read(tmpFilefd, buffer + 5, MAX_CONTENT_SIZE - 5);
+					close(tmpFilefd);
+				}
+				FileManager::deleteTemp(tmpFile);
+				tmpFile = 0;
 				break;
 			case 0x20: // put req first recv part
 				*buffer = 0x20;
@@ -294,7 +325,6 @@ void* Server::client_thread(void* in){
 	free(googleDriveList);
 	delete remoteFileNameBuf;
 	delete localFileNameBuf;
-	free(path);
 	close(conf->connfd);
 	// end thread
 	Thread::addDelQueue((struct thread_queue*) malloc(sizeof(struct thread_queue)),conf->thread, conf);
