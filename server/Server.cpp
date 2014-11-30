@@ -258,6 +258,10 @@ void* Server::client_thread(void* in){
 					readLen = read(tmpFilefd, buffer + 5, WebSocket::MAX_CONTENT_SIZE - 5);
 					send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 5+readLen), 0);
 					close(tmpFilefd);
+				}else{
+					// error handling
+					Network::toBytes((int) 0, buffer+1);
+					send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 5), 0);
 				}
 				FileManager::deleteTemp(tmpFile);
 				tmpFile = 0;
@@ -313,6 +317,11 @@ void* Server::client_thread(void* in){
 					}
 					close(tmpFilefd);
 					tmpFilefd = -1;
+				}else{
+					// error handling
+					Network::toBytes((int) 0, buffer+1);
+					Network::toBytes((int) 0, buffer+5);
+					send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 9), 0);
 				}
 				FileManager::deleteTemp(tmpFile);
 				tmpFile = 0;
