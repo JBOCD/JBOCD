@@ -132,7 +132,8 @@ void* Server::client_thread(void* in){
 								close(tmpFilefd);
 								tmpFilefd = -1;
 							}
-						}*/
+						}
+						*/
 					}else if(tmpFilefd != -1){
 						tmpLen = readLen;
 						packageRecvLen -= readLen;
@@ -160,6 +161,7 @@ void* Server::client_thread(void* in){
 					memcpy(buffer, "hello world", 12);
 					send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 12), 0);
 */
+					;
 			}
 
 			// err handling
