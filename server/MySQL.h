@@ -23,7 +23,8 @@ class MySQL{
 		static sql::Connection* getCon();
 		~MySQL();
 };
-
+sql::Driver* driver = 0;
+sql::Connection* con = 0;
 #include "MySQL.cpp"
 
 #endif
