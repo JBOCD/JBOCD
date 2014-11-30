@@ -86,7 +86,7 @@ void* Server::client_thread(void* in){
 					if(!isCont){
 						tmpFile = FileManager::newTemp();
 						FileManager::getTempPath(tmpFile, localFileNameBuf);
-						if((tmpFilefd = open(localFileNameBuf,"w")) != -1){
+						if((tmpFilefd = open(localFileNameBuf,O_WRONLY)) != -1){
 							totalLen = Network::toInt(buffer+1);
 							if(ftruncate(tmpFilefd,totalLen) != -1){
 								tmpLen = readLen-9;
@@ -117,10 +117,8 @@ void* Server::client_thread(void* in){
 					FileManager::getTempPath(tmpFile, localFileNameBuf);
 						// call api to get file
 						//finding file length
-					if((tmpFilefd = open(localFileNameBuf,"r")) != -1){
+					if((tmpFilefd = open(localFileNameBuf,O_RDONLY)) != -1){
 						totalLen = lseek(tmpFilefd, 0L, SEEK_END)+1;
-						
-					}
 						/*
 						if((tmpFilefd = open(localFileNameBuf,"r")) != -1){
 							totalLen = Network::toInt(buffer+1);
