@@ -24,7 +24,8 @@ class FileManager{
 	public:
 		static void init(Config*);
 		static int* newTemp();
-		static void freeTemp(int* file_store);
+		static void deleteTemp(int* file_store);
+		static void freeTemp();
 		static void getTempPath(int*, char* buf);
 };
 struct file_store* FileManager::free_list = NULL;

@@ -19,11 +19,22 @@ int* FileManager::newTemp(){
 	pthread_mutex_unlock(&mutex);
 	return (int*) result;
 }
-void FileManager::freeTemp(int* file){
+void FileManager::deleteTemp(int* file){
 	struct file_store* tmp = (struct file_store*) file;
 	pthread_mutex_lock(&mutex);
 	tmp->next=free_list;
 	free_list = tmp;
+	pthread_mutex_unlock(&mutex);
+}
+
+void FileManager::freeTemp(){
+	struct file_store* tmp;
+	pthread_mutex_lock(&mutex);
+	while(free_list){
+		tmp = free_list;
+		free_list = free_list->next;
+		free(tmp);
+	}
 	pthread_mutex_unlock(&mutex);
 }
 

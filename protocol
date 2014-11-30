@@ -1,0 +1,67 @@
+case 00000000: client
+	4 byte int: send account id
+	32byte string: token_hash sha256
+	break;
+case 00000000: server reject
+	break;
+case 00000001: server accept connection
+	break;
+1byte + API direct response payload:
+case 00000010: client ls account (not implement)
+case 00000010: server ls account (not implement)
+
+case 00000100: client ls dir/file
+	1 byte int: service
+	4 byte int: service ID
+	2 byte int: dir path length n
+	n byte str: dir path
+case 00000100: server ls dir/file
+	4 byte int: response length n
+	n byte str: json
+// file opearation, 0x20 should exist
+case 00100000: client put (first time only)
+	1 byte int: service
+	4 byte int: service ID
+	2 byte int: file path length n
+	n byte str: file path
+	4 byte int: send file length
+	4 byte int: send current packet payload len (Range: 0 - payload len)
+	payload len byte: payload
+case 00100000: server put (first time only)
+	1 byte int: status ( 0 is file created, other are error code)
+	0/4 byte int: recv len (if status is 0, then it exist 4byte file len, otherwise, 0byte)
+case 00100001: client put (continue upload)
+	4 byte int: send start byte position
+	4 byte int: send current packet payload len
+	payload len byte: payload
+case 00100001: server put (continue upload)
+	1 byte int: status ( 0 is part of file saved, other are error code)
+	0/4 byte int: recv len (if status is 0, then it exist 4byte file len, otherwise, 0byte)
+case 00100010: client get (first time only)
+	1 byte int: service
+	4 byte int: service ID
+	2 byte int: file path length n
+	n byte str: file path
+case 00100010: server get (first time only)
+	4 byte int: send file length
+	4 byte int: send current packet payload len (Range: 0 - payload len)
+	payload len byte: payload
+case 00100011: client get (continue upload)
+	1 byte int: status ( 0 is part of file saved, other are error code)
+	0/4 byte int: recv len (if status is 0, then it exist 4byte file len, otherwise, 0byte)
+case 00100011: server get (continue upload)
+	4 byte int: send start byte position
+	4 byte int: send current packet payload len
+	payload len byte: payload
+case 00101000: client delete
+	2 byte int: string len
+	string len byte: /path/to/remove
+case 00101000: server delete
+	1 byte int: status ( 0 is file delete, other are error code)
+case 00101010: client mkdir
+	2 byte int: string len
+	string len byte: /path/to/make
+case 00101010: server mkdir
+	1 byte int: status ( 0 is file made, other are error code)
+// close code,
+case 10001000: server close connection (server only)
