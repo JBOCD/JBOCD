@@ -1,7 +1,7 @@
 Dropbox::Dropbox(char* accessToken, int id){
 	int i=0;
 	for(;*(accessToken+i);i++);
-	this->accessToken = malloc(i);
+	this->accessToken = (char*) malloc(i);
 	memcpy(this->accessToken, accessToken, i);
 	tmpStr = (char*) malloc(1024); // 512B block
 	this->id = id;

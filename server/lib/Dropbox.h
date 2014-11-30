@@ -7,6 +7,7 @@ class Dropbox: public CDDriver{
 	protected:
 		char* tmpStr;
 		char* accessToken;
+		int id;
 	public:
 		~Dropbox();
 		Dropbox(char* accessToken, int id);

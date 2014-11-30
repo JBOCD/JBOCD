@@ -54,7 +54,7 @@ void* Server::client_thread(void* in){
 	CDDriver ** googleDriveList;
 
 	// database get all list
-	stmt = sql::db->getCon()->createStatement();
+	stmt = db->getCon()->createStatement();
 	int i=0;
 	res = stmt->executeQuery("SELECT COUNT(id) FROM dropbox");
 	if(res->next()){
@@ -71,7 +71,7 @@ void* Server::client_thread(void* in){
 		dropboxList[i]=0;
 		delete res;
 	}
-	res = sql::db->getCon()->createStatement()->executeQuery("SELECT COUNT(id) FROM googledrive");
+	res = db->getCon()->createStatement()->executeQuery("SELECT COUNT(id) FROM googledrive");
 	if(res->next()){
 		i=res->getInt(1);
 		googleDriveList = (CDDriver **) malloc(sizeof(CDDriver*) * (i+1);

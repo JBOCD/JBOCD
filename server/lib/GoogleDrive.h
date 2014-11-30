@@ -7,6 +7,7 @@ class GoogleDrive: public CDDriver{
 	protected:
 		char* tmpStr;
 		char* accessToken;
+		int id;
 	public:
 		~GoogleDrive();
 		GoogleDrive(char* accessToken, int id);

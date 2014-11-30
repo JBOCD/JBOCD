@@ -14,13 +14,13 @@
 
 class MySQL{
 	private:
-		sql::Driver* driver;
-		sql::Connection* con;
+		static sql::Driver* driver;
+		static sql::Connection* con;
 //		sql::Statement* stmt;
 //		sql::Resultset* res;
 	public:
 		MySQL(Config*);
-		sql::Connection* getCon();
+		static sql::Connection* getCon();
 		~MySQL();
 };
 
