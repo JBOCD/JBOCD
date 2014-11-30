@@ -22,12 +22,14 @@ int main() {
 	}
 */
 	// connect to DB
-	MySQL db = new MySQL(config);
+	MySQL* db = new MySQL(config);
 	// init WebSocket
 	WebSocket::init(config);
 	// init FileManager
 	FileManager::init(config);
 	// start server
-	new Server(config);
+	new Server(config, db);
+
+	delete db;
 }
 
