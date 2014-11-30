@@ -139,7 +139,7 @@ void* Server::client_thread(void* in){
 					FileManager::getTempPath(tmpFile, localFileNameBuf);
 					tmpCDD = service ? dropboxList : googleDriveList;
 					i=0;
-					while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID)) i++;
+					while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
 					if(tmpCDD[i]){
 						tmpCDD->ls(remoteFileNameBuf, localFileNameBuf);
 					}
@@ -174,7 +174,7 @@ void* Server::client_thread(void* in){
 						close(tmpFilefd);
 						tmpCDD = service ? dropboxList : googleDriveList;
 						i=0;
-						while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID)) i++;
+						while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
 						if(tmpCDD[i]){
 							tmpCDD->put(remoteFileNameBuf, localFileNameBuf);
 						}
@@ -260,7 +260,7 @@ void* Server::client_thread(void* in){
 				if((tmpFilefd = open(localFileNameBuf,O_RDONLY)) != -1){
 					Network::toBytes((int) lseek(tmpFilefd, 0L, SEEK_END)+1, buffer+1);
 					lseek(tmpFilefd, 0L, SEEK_SET);
-					read(tmpFilefd, buffer + 5, MAX_CONTENT_SIZE - 5);
+					read(tmpFilefd, buffer + 5, WebSocket::MAX_CONTENT_SIZE - 5);
 					close(tmpFilefd);
 				}
 				FileManager::deleteTemp(tmpFile);
