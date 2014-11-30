@@ -105,6 +105,8 @@ void* Server::client_thread(void* in){
 	// for get, put
 	int totalLen, fileRecvTotalLen, packageTotalLen, packageRecvLen, tmpLen;
 
+	// for system result
+	int result;
 
 	// debug variable
 	int msgNum = 0;
@@ -141,7 +143,7 @@ void* Server::client_thread(void* in){
 					i=0;
 					while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
 					if(tmpCDD[i]){
-						tmpCDD[i]->ls(remoteFileNameBuf, localFileNameBuf);
+						result = tmpCDD[i]->ls(remoteFileNameBuf, localFileNameBuf);
 					}
 					break;
 				case 0x20: // put req first recv part
@@ -176,7 +178,7 @@ void* Server::client_thread(void* in){
 						i=0;
 						while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
 						if(tmpCDD[i]){
-							tmpCDD[i]->put(remoteFileNameBuf, localFileNameBuf);
+							result = tmpCDD[i]->put(remoteFileNameBuf, localFileNameBuf);
 						}
 						FileManager::deleteTemp(tmpFile);
 						tmpFile = 0;
@@ -187,40 +189,33 @@ void* Server::client_thread(void* in){
 
 					break;
 				case 0x22: // get req first send part
-					*buffer = 0x22;
+					service = *(buffer+1);
+					serviceID = Network::toInt(buffer+2);
+					pathLength = Network::toShort(buffer+6);
+					memcpy(remoteFileNameBuf, buffer+8, pathLength);
 					tmpFile = FileManager::newTemp();
 					FileManager::getTempPath(tmpFile, localFileNameBuf);
 						// call api to get file
-						//finding file length
-					if((tmpFilefd = open(localFileNameBuf,O_RDONLY)) != -1){
-						totalLen = lseek(tmpFilefd, 0L, SEEK_END)+1;
-						/*
-						if((tmpFilefd = open(localFileNameBuf,"r")) != -1){
-							totalLen = Network::toInt(buffer+1);
-							if(ftruncate(tmpFilefd,totalLen) != -1){
-								tmpLen = readLen-9;
-								packageTotalLen = Network::toInt(buffer+1);
-								fileRecvTotalLen = 0;
-								packageRecvLen = packageTotalLen-tmpLen;
-								buffer += 9;
-							}else{
-								close(tmpFilefd);
-								tmpFilefd = -1;
-							}
-						}
-						*/
-					}else if(tmpFilefd != -1){
-						tmpLen = readLen;
-						packageRecvLen -= readLen;
-					}
-					if(tmpFilefd != -1){
-						write(tmpFilefd,buffer,tmpLen);
+					tmpCDD = service ? dropboxList : googleDriveList;
+					i=0;
+					while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
+					if(tmpCDD[i]){
+						result = tmpCDD[i]->get(remoteFileNameBuf, localFileNameBuf);
 					}
 					break;
-				case 0x23: // get req continue send part
-					break;
+//				case 0x23: // get req continue send part
+//					break;
 				case 0x28: // delete file opearation
-
+					service = *(buffer+1);
+					serviceID = Network::toInt(buffer+2);
+					pathLength = Network::toShort(buffer+6);
+					memcpy(remoteFileNameBuf, buffer+8, pathLength);
+					tmpCDD = service ? dropboxList : googleDriveList;
+					i=0;
+					while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
+					if(tmpCDD[i]){
+						result = tmpCDD[i]->del(remoteFileNameBuf);
+					}
 					break;
 				case 0x2A: // create dir
 					break;
@@ -299,11 +294,35 @@ void* Server::client_thread(void* in){
 
 				break;
 			case 0x22: // get req first send part
+				*buffer = 0x22;
+				if((tmpFilefd = open(localFileNameBuf,O_RDONLY)) != -1){
+					Network::toBytes((int) (totalLen = lseek(tmpFilefd, 0L, SEEK_END)+1), buffer+1);
+					lseek(tmpFilefd, 0L, SEEK_SET);
+					
+					Network::toBytes((int) (readLen = read(tmpFilefd, buffer + 9, WebSocket::MAX_CONTENT_SIZE - 9)), buffer+5);
+					send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 9+readLen), 0);
+					totalLen -= readLen;
+					while(totalLen && readLen){
+						*buffer = 0x23;
+						Network::toBytes((int) lseek(tmpFilefd, 0L, SEEK_CUR), buffer+1);
+						lseek(tmpFilefd, 0L, SEEK_SET);
+						
+						Network::toBytes((int) (readLen = read(tmpFilefd, buffer + 9, WebSocket::MAX_CONTENT_SIZE - 9)), buffer+5);
+						send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 9+readLen), 0);
+						totalLen -= readLen;
+					}
+					close(tmpFilefd);
+					tmpFilefd = -1;
+				}
+				FileManager::deleteTemp(tmpFile);
+				tmpFile = 0;
 				break;
 			case 0x23: // get req continue send part
 				break;
 			case 0x28: // delete file opearation
-
+				*buffer=0x28;
+				*(buffer+1)=(char) result;
+				send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 2), 0);
 				break;
 			case 0x2A: // create dir
 				break;

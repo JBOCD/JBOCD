@@ -29,14 +29,14 @@ case 00100000: client put (first time only)
 	payload len byte: payload
 case 00100000: server put (first time only)
 	1 byte int: status ( 0 is file created, other are error code)
-	0/4 byte int: recv len (if status is 0, then it exist 4byte file len, otherwise, 0byte)
+	4 byte int: recv len (if status is 0, then it exist 4byte file len, otherwise, 0byte)
 case 00100001: client put (continue upload)
 	4 byte int: send start byte position
 	4 byte int: send current packet payload len
 	payload len byte: payload
 case 00100001: server put (continue upload)
 	1 byte int: status ( 0 is part of file saved, other are error code)
-	0/4 byte int: recv len (if status is 0, then it exist 4byte file len, otherwise, 0byte)
+	4 byte int: recv len (if status is 0, then it exist 4byte file len, otherwise, 0byte)
 case 00100010: client get (first time only)
 	1 byte int: service
 	4 byte int: service ID
@@ -46,16 +46,18 @@ case 00100010: server get (first time only)
 	4 byte int: send file length
 	4 byte int: send current packet payload len (Range: 0 - payload len)
 	payload len byte: payload
-case 00100011: client get (continue upload)
-	1 byte int: status ( 0 is part of file saved, other are error code)
-	0/4 byte int: recv len (if status is 0, then it exist 4byte file len, otherwise, 0byte)
+//case 00100011: client get (continue upload)
+//	1 byte int: status ( 0 is part of file saved, other are error code)
+//	0/4 byte int: recv len (if status is 0, then it exist 4byte file len, otherwise, 0byte)
 case 00100011: server get (continue upload)
 	4 byte int: send start byte position
 	4 byte int: send current packet payload len
 	payload len byte: payload
 case 00101000: client delete
+	1 byte int: service
+	4 byte int: service ID
 	2 byte int: string len
-	string len byte: /path/to/remove
+	n len byte: /path/to/remove
 case 00101000: server delete
 	1 byte int: status ( 0 is file delete, other are error code)
 case 00101010: client mkdir
