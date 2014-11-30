@@ -9,11 +9,12 @@ class Dropbox: public CDDriver{
 		char* accessToken;
 	public:
 		~Dropbox();
-		Dropbox(char* accessToken);
+		Dropbox(char* accessToken, int id);
 		int get(char* remotefilePath, char* localfilePath);
 		int put(char* remotefilePath, char* localfilePath);
 		int ls (char* localfilePath);
 		int del(char* remotefilePath);
+		bool isID(int id);
 };
 
 

@@ -20,6 +20,7 @@ class MySQL{
 //		sql::Resultset* res;
 	public:
 		MySQL(Config*);
+		sql::Connection* getCon();
 		~MySQL();
 };
 

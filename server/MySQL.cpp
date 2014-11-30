@@ -9,6 +9,9 @@ MySQL::MySQL(Config* conf){
 	con->setSchema(json_object_get_string(conf->get("database.MySQL.dbname")));
 	delete conn;
 }
+sql::Connection* MySQL::getCon(){
+	return con;
+}
 MySQL::~MySQL(){
 	delete con;
 }

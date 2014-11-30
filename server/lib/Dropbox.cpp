@@ -1,6 +1,10 @@
-Dropbox::Dropbox(char* accessToken){
-	this->accessToken = accessToken;
-	tmpStr = (char*) malloc(4096); // 4KB block
+Dropbox::Dropbox(char* accessToken, int id){
+	int i=0;
+	for(;*(accessToken+i);i++);
+	this->accessToken = malloc(i);
+	memcpy(this->accessToken, accessToken, i);
+	tmpStr = (char*) malloc(1024); // 512B block
+	this->id = id;
 }
 int Dropbox::get(char* remotefilePath, char* localfilePath){
 	sprintf(tmpStr, "%s %s %s %s",
@@ -35,6 +39,9 @@ int Dropbox::del(char* remotefilePath){
 		remotefilePath
 	);
 	return system(tmpStr);
+}
+bool Dropbox::isID(int id){
+	return this->id == id;
 }
 
 Dropbox::~Dropbox(){

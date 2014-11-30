@@ -15,7 +15,7 @@ Server::Server(Config* conf){
 		server.sin_addr.s_addr = INADDR_ANY;
 		server.sin_port = htons(port);
 
-		printf("Binding Server to port %d ...\n", port);
+		printf("Binding Server to port %u ...\n", port);
 		if( bind(sockfd, (struct sockaddr*)&server, sizeof(server)) < 0){ 
 			perror("Bind failed");
 			exit(1);
@@ -45,12 +45,49 @@ void* Server::client_thread(void* in){
 	bool isCont = false;
 	bool isEnd = false;
 
+	sql::Statement* stmt;
+	sql::ResultSet* res;
+
 	unsigned char packageCode;
 
 	CDDriver ** dropboxList;
 	CDDriver ** googleDriveList;
 
 	// database get all list
+	stmt = sql::db->getCon()->createStatement();
+	int i=0;
+	res = stmt->executeQuery("SELECT COUNT(id) FROM dropbox");
+	if(res->next()){
+		i=res->getInt(1);
+		dropboxList = (CDDriver **) malloc(sizeof(CDDriver*) * (i+1));
+		delete res;
+	}
+	if(i){
+		i=0;
+		res = stmt->executeQuery("SELECT id, key FROM dropbox");
+		while(res->next()){
+			dropboxList[i++] = new Dropbox(res->getString(2), res->getInt(1));
+		}
+		dropboxList[i]=0;
+		delete res;
+	}
+	res = sql::db->getCon()->createStatement()->executeQuery("SELECT COUNT(id) FROM googledrive");
+	if(res->next()){
+		i=res->getInt(1);
+		googleDriveList = (CDDriver **) malloc(sizeof(CDDriver*) * (i+1);
+		delete res;
+	}
+	if(i){
+		i=0;
+		res = stmt->executeQuery("SELECT id, key FROM dropbox");
+		while(res->next()){
+			googleDriveList[i++] = new GoogleDrive(res->getString(2), res->getInt(1));
+		}
+		googleDriveList[i]=0;
+		delete res;
+	}
+	// we assume that no extra cloud drive will add into the system
+	// previous COUNT(id) should be equal to now COUNT(id)
 
 	// file management
 	char* remoteFileNameBuf = new char[1024];
@@ -58,6 +95,12 @@ void* Server::client_thread(void* in){
 
 	int* tmpFile = NULL;
 	int tmpFilefd = 0;
+
+	// for ls, get, put, delete
+	unsigned char service;
+	int serviceID;
+	short pathLength;
+	char* path = malloc(512);
 
 	// for get, put
 	int totalLen, fileRecvTotalLen, packageTotalLen, packageRecvLen, tmpLen;
@@ -72,15 +115,26 @@ void* Server::client_thread(void* in){
 		msgNum++;
 		isCont = recvLen!=readLen; // if recvLen != readLen, then isCont == true, it mean it continue to read;
 		do{
-			// forget to update recvLen?
 			readLen = WebSocket::getMsg(conf->connfd, buffer, WebSocket::MAX_PACKAGE_SIZE, isCont, &recvLen, maskKey, &err);
+			// err handling
+			if(err & WebSocket::ERR_VER_MISMATCH) printf("WebSocket Version not match.\n");
+			if(err & WebSocket::ERR_NOT_WEBSOCKET) printf("Connection is not WebScoket.\n");
+			if(err & WebSocket::ERR_WRONG_WS_PROTOCOL) printf("WebSocket Protocol Error, Client Package have no mask.\n");
+			if(err) break;
+
 			// protocol part
 			if(!isCont){
 				packageCode = *buffer;
 			}
+			// recv part
 			switch(packageCode){
 				case 0x02: // ls acc req
+					break;
 				case 0x04: // ls dir req
+					service = *(buffer+1);
+					serviceID = Network::toInt(*(buffer+2));
+
+					6
 					break;
 				case 0x20: // put req first recv part
 					if(!isCont){
@@ -164,13 +218,10 @@ void* Server::client_thread(void* in){
 					;
 			}
 
-			// err handling
-			if(err & WebSocket::ERR_VER_MISMATCH) printf("WebSocket Version not match.\n");
-			if(err & WebSocket::ERR_NOT_WEBSOCKET) printf("Connection is not WebScoket.\n");
-			if(err & WebSocket::ERR_WRONG_WS_PROTOCOL) printf("WebSocket Protocol Error, Client Package have no mask.\n");
 		}while( (isCont=recvLen!=readLen));
 
-		// package end do something la
+		if(err) break;
+		// send part
 		switch(packageCode){
 			case 0x00: // 00000000
 				// 4 byte int: send account id
@@ -182,6 +233,7 @@ void* Server::client_thread(void* in){
 				send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 2), 0);
 				break;
 			case 0x02: // ls acc req
+				break;
 			case 0x04: // ls dir req
 				break;
 			case 0x20: // put req first recv part
@@ -235,8 +287,15 @@ void* Server::client_thread(void* in){
 				memcpy(buffer, "hello world", 12);
 				send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 12), 0);
 		}
-	}while(!isEnd);
+	}while(!isEnd || recvLen);
 	free(buffer);
+	for(i=0;dropboxList[i];i++) delete dropboxList[i];
+	for(i=0;googleDriveList[i];i++) delete googleDriveList[i];
+	free(dropboxList);
+	free(googleDriveList);
+	delete remoteFileNameBuf;
+	delete localFileNameBuf;
+	free(path);
 	close(conf->connfd);
 	// end thread
 	Thread::addDelQueue((struct thread_queue*) malloc(sizeof(struct thread_queue)),conf->thread, conf);

@@ -9,11 +9,12 @@ class GoogleDrive: public CDDriver{
 		char* accessToken;
 	public:
 		~GoogleDrive();
-		GoogleDrive(char* accessToken);
+		GoogleDrive(char* accessToken, int id);
 		int get(char* remotefilePath, char* localfilePath);
 		int put(char* remotefilePath, char* localfilePath);
 		int ls (char* localfilePath);
 		int del(char* remotefilePath);
+		bool isID(int id);
 };
 
 

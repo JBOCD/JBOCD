@@ -1,6 +1,10 @@
-GoogleDrive::GoogleDrive(char* accessToken){
-	this->accessToken = accessToken;
+GoogleDrive::GoogleDrive(char* accessToken, int id){
+	int i=0;
+	for(;*(accessToken+i);i++);
+	this->accessToken = malloc(i);
+	memcpy(this->accessToken, accessToken, i);
 	tmpStr = (char*) malloc(4096); // 4KB block
+	this->id = id;
 }
 int GoogleDrive::get(char* remotefilePath, char* localfilePath){
 	sprintf(tmpStr, "%s %s %s %s",
@@ -35,6 +39,9 @@ int GoogleDrive::del(char* remotefilePath){
 		remotefilePath
 	);
 	return system(tmpStr);
+}
+bool GoogleDrive::isID(int id){
+	return this->id == id;
 }
 
 GoogleDrive::~GoogleDrive(){

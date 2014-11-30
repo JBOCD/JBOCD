@@ -157,17 +157,14 @@ make clean BUILD=$BUILD; make BUILD=$BUILD
 
 echo Setting up JBOCD
 [ ! -d /etc/JBOCD ] && sudo mkdir /etc/JBOCD
-[ -f /etc/JBOCD/config.json ] && sudo cp /etc/JBOCD/config.json /etc/JBOCD/config.json.bak
-sudo cp config.json /etc/JBOCD/config.json
-sudo chmod 644 /etc/JBOCD/config.json
+
+# if there is config file, don't copy
+if [ ! -f /etc/JBOCD/config.json ]; then
+	sudo cp config.json /etc/JBOCD/config.json
+	sudo chmod 644 /etc/JBOCD/config.json
+fi
 
 echo "Installation completed"
-
-if [ -f /etc/JBOCD/config.json.bak ]; then
-	echo 
-	echo 'Your previous config file is backuped as "config.json.bak"'
-	echo 'Go to /etc/JBOCD/ to reconfig the JBOCD'
-fi
 
 cd $BASE_PATH
 sudo umount $TEMP
