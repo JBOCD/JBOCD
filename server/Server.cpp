@@ -64,7 +64,7 @@ void* Server::client_thread(void* in){
 	}
 	if(i){
 		i=0;
-		res = stmt->executeQuery("SELECT id, key FROM dropbox");
+		res = stmt->executeQuery("SELECT `id`, `key` FROM dropbox");
 		while(res->next()){
 			dropboxList[i++] = new Dropbox(res->getString(2)->c_str(), res->getInt(1));
 		}
@@ -79,7 +79,7 @@ void* Server::client_thread(void* in){
 	}
 	if(i){
 		i=0;
-		res = stmt->executeQuery("SELECT id, key FROM dropbox");
+		res = stmt->executeQuery("SELECT `id`, `key` FROM dropbox");
 		while(res->next()){
 			googleDriveList[i++] = new GoogleDrive(res->getString(2)->c_str(), res->getInt(1));
 		}
