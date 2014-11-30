@@ -14,7 +14,7 @@
 			"port":"3306",
 			"user":"JBOCDuser",
 			"pass":"JBOCDpass",
-			"dbname":"JBOCD"
+			"dbname":"jbocd"
 		}
 	},
 	"server":{

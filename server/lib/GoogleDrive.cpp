@@ -4,7 +4,7 @@ GoogleDrive::GoogleDrive(char* accessToken){
 }
 int GoogleDrive::get(char* remotefilePath, char* localfilePath){
 	sprintf(tmpStr, "%s %s %s %s",
-		"/home/pcl1401/dev/modular/get.py",
+		"/var/JBOCD/module/googledrive/get.py",
 		accessToken,
 		remotefilePath,
 		localfilePath
@@ -13,7 +13,7 @@ int GoogleDrive::get(char* remotefilePath, char* localfilePath){
 }
 int GoogleDrive::put(char* remotefilePath, char* localfilePath){
 	sprintf(tmpStr, "%s %s %s %s",
-		"/home/pcl1401/dev/modular/put.py",
+		"/var/JBOCD/module/googledrive/put.py",
 		accessToken,
 		localfilePath,
 		remotefilePath
@@ -22,7 +22,7 @@ int GoogleDrive::put(char* remotefilePath, char* localfilePath){
 }
 int GoogleDrive::ls(char* localfilePath){
 	sprintf(tmpStr, "%s %s %s",
-		"/home/pcl1401/dev/modular/list.py",
+		"/var/JBOCD/module/googledrive/list.py",
 		accessToken,
 		localfilePath
 	);
@@ -30,7 +30,7 @@ int GoogleDrive::ls(char* localfilePath){
 }
 int GoogleDrive::del(char* remotefilePath){
 	sprintf(tmpStr, "%s %s %s",
-		"/home/pcl1401/dev/modular/list.py",
+		"/var/JBOCD/module/googledrive/list.py",
 		accessToken,
 		remotefilePath
 	);

@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include "lib/GoogleDrive.h"
+#include "lib/Dropbox.h"
 
 #ifndef SERVER_H
 #define SERVER_H
