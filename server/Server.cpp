@@ -260,7 +260,8 @@ void* Server::client_thread(void* in){
 				if((tmpFilefd = open(localFileNameBuf,O_RDONLY)) != -1){
 					Network::toBytes((int) lseek(tmpFilefd, 0L, SEEK_END)+1, buffer+1);
 					lseek(tmpFilefd, 0L, SEEK_SET);
-					read(tmpFilefd, buffer + 5, WebSocket::MAX_CONTENT_SIZE - 5);
+					readLen = read(tmpFilefd, buffer + 5, WebSocket::MAX_CONTENT_SIZE - 5);
+					send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 5+readLen), 0);
 					close(tmpFilefd);
 				}
 				FileManager::deleteTemp(tmpFile);
