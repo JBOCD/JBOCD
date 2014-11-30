@@ -11,6 +11,6 @@ class CDDriver{
 		virtual int put(char* remotefilePath, char* localfilePath) = 0;	// return exit code
 		virtual int ls (char* remotefilePath, char* localfilePath) = 0;	// return exit code
 		virtual int del(char* remotefilePath) = 0;	// return exit code
-		bool isID(int id);
+		virtual bool isID(int id) = 0;
 };
 #endif
