@@ -28,7 +28,7 @@ int main() {
 	// init FileManager
 	FileManager::init(config);
 	// start server
-	new Server(config, db);
+	new Server(config);
 
 	delete db;
 }

@@ -46,7 +46,7 @@ void* Server::client_thread(void* in){
 	bool isEnd = false;
 
 	sql::Statement* stmt;
-	sql::ResultSet* res;
+	sql::Resultset* res;
 
 	unsigned char packageCode;
 
