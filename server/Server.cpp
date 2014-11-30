@@ -46,7 +46,7 @@ void* Server::client_thread(void* in){
 	bool isEnd = false;
 
 	sql::Statement* stmt;
-	sql::Resultset* res;
+	sql::ResultSet* res;
 
 	unsigned char packageCode;
 
@@ -74,7 +74,7 @@ void* Server::client_thread(void* in){
 	res = stmt->executeQuery("SELECT COUNT(id) FROM googledrive");
 	if(res->next()){
 		i=res->getInt(1);
-		googleDriveList = (CDDriver **) malloc(sizeof(CDDriver*) * (i+1);
+		googleDriveList = (CDDriver **) malloc(sizeof(CDDriver*) * (i+1));
 		delete res;
 	}
 	if(i){
@@ -100,7 +100,7 @@ void* Server::client_thread(void* in){
 	unsigned char service;
 	int serviceID;
 	short pathLength;
-	char* path = malloc(512);
+	char* path = (char*) malloc(512);
 
 	// for get, put
 	int totalLen, fileRecvTotalLen, packageTotalLen, packageRecvLen, tmpLen;
@@ -132,9 +132,8 @@ void* Server::client_thread(void* in){
 					break;
 				case 0x04: // ls dir req
 					service = *(buffer+1);
-					serviceID = Network::toInt(*(buffer+2));
-
-					6
+					serviceID = Network::toInt(buffer+2);
+//6
 					break;
 				case 0x20: // put req first recv part
 					if(!isCont){

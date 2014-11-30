@@ -8,8 +8,12 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <fcntl.h>
+#include <cppconn/statement.h>
+#include <cppconn/resultset.h>
+
 #include "lib/GoogleDrive.h"
 #include "lib/Dropbox.h"
+
 
 #ifndef SERVER_H
 #define SERVER_H
