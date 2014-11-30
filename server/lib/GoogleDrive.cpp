@@ -1,4 +1,4 @@
-GoogleDrive::GoogleDrive(char* accessToken, int id){
+GoogleDrive::GoogleDrive(const char* accessToken, int id){
 	int i=0;
 	for(;*(accessToken+i);i++);
 	this->accessToken = (char*) malloc(i);

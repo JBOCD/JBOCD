@@ -10,7 +10,7 @@ class GoogleDrive: public CDDriver{
 		int id;
 	public:
 		~GoogleDrive();
-		GoogleDrive(char* accessToken, int id);
+		GoogleDrive(const char* accessToken, int id);
 		int get(char* remotefilePath, char* localfilePath);
 		int put(char* remotefilePath, char* localfilePath);
 		int ls (char* localfilePath);

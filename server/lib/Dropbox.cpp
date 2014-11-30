@@ -1,4 +1,4 @@
-Dropbox::Dropbox(char* accessToken, int id){
+Dropbox::Dropbox(const char* accessToken, int id){
 	int i=0;
 	for(;*(accessToken+i);i++);
 	this->accessToken = (char*) malloc(i);

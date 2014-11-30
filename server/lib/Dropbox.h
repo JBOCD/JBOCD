@@ -10,7 +10,7 @@ class Dropbox: public CDDriver{
 		int id;
 	public:
 		~Dropbox();
-		Dropbox(char* accessToken, int id);
+		Dropbox(const char* accessToken, int id);
 		int get(char* remotefilePath, char* localfilePath);
 		int put(char* remotefilePath, char* localfilePath);
 		int ls (char* localfilePath);
