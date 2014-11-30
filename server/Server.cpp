@@ -267,7 +267,8 @@ void* Server::client_thread(void* in){
 				tmpFile = 0;
 				break;
 			case 0x20: // put req first recv part
-				*buffer = 0x20;
+//			case 0x21: // put req continue recv part
+				*buffer = packageCode;
 				if(tmpFilefd != -1 && !packageRecvLen){
 					*(buffer+1) = 0x00;
 					Network::toBytes((int) packageTotalLen,buffer+2);
@@ -294,8 +295,6 @@ void* Server::client_thread(void* in){
 					FileManager::deleteTemp(tmpFile);
 					tmpFile = 0;
 				}
-				break;
-			case 0x21: // put req continue recv part
 
 				break;
 			case 0x22: // get req first send part
