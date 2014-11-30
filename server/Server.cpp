@@ -141,7 +141,7 @@ void* Server::client_thread(void* in){
 					i=0;
 					while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
 					if(tmpCDD[i]){
-						tmpCDD->ls(remoteFileNameBuf, localFileNameBuf);
+						tmpCDD[i]->ls(remoteFileNameBuf, localFileNameBuf);
 					}
 					break;
 				case 0x20: // put req first recv part
@@ -176,7 +176,7 @@ void* Server::client_thread(void* in){
 						i=0;
 						while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
 						if(tmpCDD[i]){
-							tmpCDD->put(remoteFileNameBuf, localFileNameBuf);
+							tmpCDD[i]->put(remoteFileNameBuf, localFileNameBuf);
 						}
 						FileManager::deleteTemp(tmpFile);
 						tmpFile = 0;
