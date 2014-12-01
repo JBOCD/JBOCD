@@ -361,6 +361,7 @@ void* Server::client_thread(void* in){
 //				}
 //				memcpy(buffer, "hello world", 12);
 //				send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 12), 0);
+				;
 		}
 	}while(!isEnd);
 	free(buffer);
