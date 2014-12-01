@@ -126,7 +126,7 @@ int WebSocket::close(unsigned char* buf){
 }
 
 void WebSocket::decode(unsigned char* in, unsigned char* out, unsigned char* maskKey, int len){
-	unsigned char* tmp[4];
+	unsigned char tmp[4];
 	int i=0, j=len/4;
 	for(;i<j;i++){
 		out[0] = in[0] ^ maskKey[0];
