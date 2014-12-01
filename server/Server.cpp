@@ -167,7 +167,8 @@ void* Server::client_thread(void* in){
 								tmpLen = readLen-16-pathLength;
 								fileRecvTotalLen = 0;
 								packageRecvLen = packageTotalLen-tmpLen;
-								buffer += 9;
+								fileRecvTotalLen+=tmpLen;
+								write(tmpFilefd,buffer-16-pathLength,tmpLen);
 							}else{
 								close(tmpFilefd);
 								tmpFilefd = -1;
@@ -176,8 +177,6 @@ void* Server::client_thread(void* in){
 					}else if(tmpFilefd != -1){
 						tmpLen = readLen;
 						packageRecvLen -= readLen;
-					}
-					if(tmpFilefd != -1){
 						fileRecvTotalLen+=tmpLen;
 						write(tmpFilefd,buffer,tmpLen);
 					}
