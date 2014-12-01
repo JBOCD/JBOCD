@@ -35,7 +35,7 @@ int GoogleDrive::ls(char* remotefilePath, char* localfilePath){
 }
 int GoogleDrive::del(char* remotefilePath){
 	sprintf(tmpStr, "%s '%s' '%s'",
-		"python /var/JBOCD/module/googledrive/list.py",
+		"python /var/JBOCD/module/googledrive/delete.py",
 		accessToken,
 		remotefilePath
 	);

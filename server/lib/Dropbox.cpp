@@ -35,7 +35,7 @@ int Dropbox::ls(char* remotefilePath, char* localfilePath){
 }
 int Dropbox::del(char* remotefilePath){
 	sprintf(tmpStr, "%s '%s' '%s'",
-		"python /var/JBOCD/module/dropbox/list.py",
+		"python /var/JBOCD/module/dropbox/delete.py",
 		accessToken,
 		remotefilePath
 	);
