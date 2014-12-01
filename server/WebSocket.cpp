@@ -139,7 +139,7 @@ void WebSocket::decode(unsigned char* in, unsigned char* out, unsigned char* mas
 	j=len%4;
 	for(i=0;i<4;i++){
 		if(i<j){
-			tmp[i+j] = maskKey[i];
+			tmp[i+(4-j)] = maskKey[i];
 			out[i] = in[i] ^ maskKey[i];
 		}else{
 			tmp[i-j] = maskKey[i];

@@ -1,14 +1,14 @@
 Network::Network(){}
 unsigned short Network::toShort(unsigned char* in){
-	short out = 0;
+	unsigned short out = 0;
 	return (out | in[0]) << 8 | in[1];
 }
 unsigned int Network::toInt(unsigned char* in){
-	int out = 0;
+	unsigned int out = 0;
 	return ((((((out | in[0]) << 8 ) | in[1]) << 8 ) | in[2]) << 8 ) | in[3];
 }
 unsigned long long Network::toLongLong(unsigned char* in){
-	long long out = 0;
+	unsigned long long out = 0;
 	return ((((((((((((((out | in[0]) << 8 ) | in[1]) << 8 ) | in[2]) << 8 ) | in[3]) << 8) | in[4]) << 8 ) | in[5]) << 8 ) | in[6]) << 8 ) | in[7];
 }
 unsigned char* Network::toChars(unsigned char* in){
