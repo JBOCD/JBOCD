@@ -127,7 +127,7 @@ void* Server::client_thread(void* in){
 			if(err) break;
 
 			// protocol part
-			if(!isCont){
+			if(!isCont && totalLen == fileRecvTotalLen){
 				packageCode = *buffer;
 			}
 			// recv part
@@ -152,7 +152,7 @@ void* Server::client_thread(void* in){
 					}
 					break;
 				case 0x20: // put req first recv part
-					if(!isCont){
+					if(!isCont && totalLen == fileRecvTotalLen){
 						tmpFile = FileManager::newTemp();
 						service = *(buffer+1);
 						serviceID = Network::toInt(buffer+2);
@@ -175,10 +175,9 @@ void* Server::client_thread(void* in){
 							}
 						}
 					}else if(tmpFilefd != -1){
-						tmpLen = readLen;
 						packageRecvLen -= readLen;
-						fileRecvTotalLen+=tmpLen;
-						write(tmpFilefd,buffer,tmpLen);
+						fileRecvTotalLen+=readLen;
+						write(tmpFilefd,buffer,readLen);
 					}
 					if(totalLen == fileRecvTotalLen){
 						// file completed, start uploading
@@ -356,11 +355,11 @@ void* Server::client_thread(void* in){
 				isEnd = true;
 				break; 
 			default:
-				for(int i=0;i<readLen;i++){
-					putchar(buffer[i]);
-				}
-				memcpy(buffer, "hello world", 12);
-				send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 12), 0);
+//				for(int i=0;i<readLen;i++){
+//					putchar(buffer[i]);
+//				}
+//				memcpy(buffer, "hello world", 12);
+//				send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 12), 0);
 		}
 	}while(!isEnd);
 	free(buffer);
