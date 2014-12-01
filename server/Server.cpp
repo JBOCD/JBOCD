@@ -115,7 +115,7 @@ void* Server::client_thread(void* in){
 //	if not using websocket, how to confirm message exact size in our protocol?
 	recv(conf->connfd, buffer, WebSocket::MAX_PACKAGE_SIZE, 0);
 	write(conf->connfd, buffer, WebSocket::getHandShakeResponse(buffer, buffer, &err));
-	isCont = recvLen!=readLen; // if recvLen != readLen, then isCont == true, it mean it continue to read;
+	isCont = recvLen; // if recvLen != readLen, then isCont == true, it mean it continue to read;
 	do{
 		msgNum++;
 		do{
@@ -251,7 +251,7 @@ void* Server::client_thread(void* in){
 					;
 			}
 
-		}while( (isCont=recvLen!=readLen));
+		}while(isCont=recvLen);
 
 		if(err) break;
 		// send part

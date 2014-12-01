@@ -65,15 +65,15 @@ int WebSocket::getMsg(int fd, unsigned char* buf, int size, bool isContinue,  lo
 		buf[0] = 0x88;
 		buf[1] = 0;
 		readLen=1;
-		*payloadLen=1;
-	}else if( ! (buf[1] & 0x80) ){
-		// close connection with error
-		// mask is not 1
-		buf[0] = 0x88;
-		buf[1] = 0;
-		readLen = 1;
-		*payloadLen = 1;
-		err && (*err |= ERR_WRONG_WS_PROTOCOL);
+		*payloadLen=0;
+//	}else if( ! (buf[1] & 0x80) ){
+//		// close connection with error
+//		// mask is not 1
+//		buf[0] = 0x88;
+//		buf[1] = 0;
+//		readLen = 1;
+//		*payloadLen = 1;
+//		err && (*err |= ERR_WRONG_WS_PROTOCOL);
 	}else{
 		*payloadLen = (long long) (buf[1] & 0x7F);
 		if(*payloadLen < 126){
@@ -97,6 +97,7 @@ int WebSocket::getMsg(int fd, unsigned char* buf, int size, bool isContinue,  lo
 			maskKey[3] = buf[13];
 			decode(buf+14, buf, maskKey, readLen-=14);
 		}
+		*payloadLen -= readLen;
 	}
 	return readLen;
 }
