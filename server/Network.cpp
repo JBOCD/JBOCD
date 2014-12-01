@@ -1,19 +1,19 @@
 Network::Network(){}
-short Network::toShort(unsigned char* in){
+unsigned short Network::toShort(unsigned char* in){
 	short out = 0;
 	return (out | in[0]) << 8 | in[1];
 }
-int Network::toInt(unsigned char* in){
+unsigned int Network::toInt(unsigned char* in){
 	int out = 0;
 	return ((((((out | in[0]) << 8 ) | in[1]) << 8 ) | in[2]) << 8 ) | in[3];
 }
-long long Network::toLongLong(unsigned char* in){
+unsigned long long Network::toLongLong(unsigned char* in){
 	long long out = 0;
 	return ((((((((((((((out | in[0]) << 8 ) | in[1]) << 8 ) | in[2]) << 8 ) | in[3]) << 8) | in[4]) << 8 ) | in[5]) << 8 ) | in[6]) << 8 ) | in[7];
 }
-char* Network::toChars(unsigned char* in){
+unsigned char* Network::toChars(unsigned char* in){
 	int len = Network::toInt(in);
-	char * out = (char*) malloc(len+1);
+	unsigned char * out = (unsigned char*) malloc(len+1);
 	in = in+4;
 	for(int i=0;i<len;i++){
 		out[i]=in[i];

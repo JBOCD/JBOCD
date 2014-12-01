@@ -8,10 +8,10 @@ class Network{
 		// in 32 bit system, short=16bit, int=32bit, long=32bit, long long=64bit
 		// in 64 bit system, short=16bit, int=32bit, long=64bit, long long=64bit
 		// for compatitability, we use "short", "int", and "long long"
-		static short toShort(unsigned char*);
-		static int toInt(unsigned char*);
-		static long long toLongLong(unsigned char*);
-		static char* toChars(unsigned char*);
+		static unsigned short toShort(unsigned char*);
+		static unsigned int toInt(unsigned char*);
+		static unsigned long long toLongLong(unsigned char*);
+		static unsigned char* toChars(unsigned char*);
 		static void toBytes(short value, unsigned char* ptr);
 		static void toBytes(int value, unsigned char* ptr);
 		static void toBytes(long long value, unsigned char* ptr);
