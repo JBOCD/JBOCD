@@ -1,7 +1,7 @@
 GoogleDrive::GoogleDrive(const char* accessToken, int id){
 	int i=0;
 	for(;*(accessToken+i);i++);
-	this->accessToken = (char*) malloc(i);
+	this->accessToken = (char*) malloc(++i);
 	memcpy(this->accessToken, accessToken, i);
 	tmpStr = (char*) malloc(4096); // 4KB block
 	this->id = id;

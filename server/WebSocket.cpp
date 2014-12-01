@@ -62,14 +62,14 @@ int WebSocket::getMsg(int fd, unsigned char* buf, int size, bool isContinue,  lo
 		*payloadLen -= readLen;
 	}else if(buf[0] & 0x08){
 		// close connection opcode
-		buf[0] = 0xFF;
+		buf[0] = 0x88;
 		buf[1] = 0;
 		readLen=1;
 		*payloadLen=1;
 	}else if( ! (buf[1] & 0x80) ){
 		// close connection with error
 		// mask is not 1
-		buf[0] = 0xFF;
+		buf[0] = 0x88;
 		buf[1] = 0;
 		readLen = 1;
 		*payloadLen = 1;

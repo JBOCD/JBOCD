@@ -80,7 +80,7 @@ void* Server::client_thread(void* in){
 	}
 	if(i){
 		i=0;
-		res = stmt->executeQuery("SELECT `id`, `key` FROM dropbox");
+		res = stmt->executeQuery("SELECT `id`, `key` FROM googledrive");
 		while(res->next()){
 			googleDriveList[i++] = new GoogleDrive(res->getString(2)->c_str(), res->getInt(1));
 		}
@@ -113,9 +113,9 @@ void* Server::client_thread(void* in){
 //	if not using websocket, how to confirm message exact size in our protocol?
 	recv(conf->connfd, buffer, WebSocket::MAX_PACKAGE_SIZE, 0);
 	write(conf->connfd, buffer, WebSocket::getHandShakeResponse(buffer, buffer, &err));
+	isCont = recvLen!=readLen; // if recvLen != readLen, then isCont == true, it mean it continue to read;
 	do{
 		msgNum++;
-		isCont = recvLen!=readLen; // if recvLen != readLen, then isCont == true, it mean it continue to read;
 		do{
 			readLen = WebSocket::getMsg(conf->connfd, buffer, WebSocket::MAX_PACKAGE_SIZE, isCont, &recvLen, maskKey, &err);
 			// err handling
@@ -144,7 +144,9 @@ void* Server::client_thread(void* in){
 					i=0;
 					while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
 					if(tmpCDD[i]){
+						printf("Calling API ... ");
 						result = tmpCDD[i]->ls(remoteFileNameBuf, localFileNameBuf);
+						printf("Done.");
 					}
 					break;
 				case 0x20: // put req first recv part
@@ -184,7 +186,9 @@ void* Server::client_thread(void* in){
 						i=0;
 						while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
 						if(tmpCDD[i]){
+							printf("Calling API ... ");
 							result = tmpCDD[i]->put(remoteFileNameBuf, localFileNameBuf);
+							printf("Done.");
 						}
 						FileManager::deleteTemp(tmpFile);
 						tmpFile = 0;
@@ -207,7 +211,9 @@ void* Server::client_thread(void* in){
 					i=0;
 					while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
 					if(tmpCDD[i]){
+						printf("Calling API ... ");
 						result = tmpCDD[i]->get(remoteFileNameBuf, localFileNameBuf);
+						printf("Done.");
 					}
 					break;
 //				case 0x23: // get req continue send part
@@ -222,7 +228,9 @@ void* Server::client_thread(void* in){
 					i=0;
 					while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
 					if(tmpCDD[i]){
+						printf("Calling API ... ");
 						result = tmpCDD[i]->del(remoteFileNameBuf);
+						printf("Done.");
 					}
 					break;
 				case 0x2A: // create dir
@@ -353,7 +361,7 @@ void* Server::client_thread(void* in){
 				memcpy(buffer, "hello world", 12);
 				send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 12), 0);
 		}
-	}while(!isEnd || recvLen);
+	}while(!isEnd);
 	free(buffer);
 	for(i=0;dropboxList[i];i++) delete dropboxList[i];
 	for(i=0;googleDriveList[i];i++) delete googleDriveList[i];
