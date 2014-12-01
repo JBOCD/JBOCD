@@ -284,34 +284,35 @@ void* Server::client_thread(void* in){
 				break;
 			case 0x20: // put req first recv part
 //			case 0x21: // put req continue recv part
-				*buffer = packageCode;
-				if(tmpFilefd != -1 && !packageRecvLen){
-					*(buffer+1) = 0x00;
-					Network::toBytes((int) packageTotalLen,buffer+2);
-					send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 6), 0);
-					fileRecvTotalLen += packageTotalLen;
-					if(fileRecvTotalLen == totalLen){
-						// end of read file
-						// close file
-						close(tmpFilefd);
-						// call api to read
+				if(totalLen == fileRecvTotalLen){
+					*buffer = packageCode;
+					if(tmpFilefd != -1 && !packageRecvLen){
+						*(buffer+1) = 0x00;
+						Network::toBytes((int) packageTotalLen,buffer+2);
+						send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 6), 0);
+						fileRecvTotalLen += packageTotalLen;
+						if(fileRecvTotalLen == totalLen){
+							// end of read file
+							// close file
+							close(tmpFilefd);
+							// call api to read
+							FileManager::deleteTemp(tmpFile);
+							tmpFile=0;
+						}
+					}else{
+						if(tmpFilefd == -1){
+							*(buffer+1) = 0xFF; // file not create Error
+						}else if(packageRecvLen){
+							*(buffer+1) = 0xFE; // file recv length not equal to sent length
+							// err occur, close file and release
+							close(tmpFilefd);
+							tmpFilefd = -1;
+						}
+						send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 2), 0);
 						FileManager::deleteTemp(tmpFile);
-						tmpFile=0;
+						tmpFile = 0;
 					}
-				}else{
-					if(tmpFilefd == -1){
-						*(buffer+1) = 0xFF; // file not create Error
-					}else if(packageRecvLen){
-						*(buffer+1) = 0xFE; // file recv length not equal to sent length
-						// err occur, close file and release
-						close(tmpFilefd);
-						tmpFilefd = -1;
-					}
-					send(conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 2), 0);
-					FileManager::deleteTemp(tmpFile);
-					tmpFile = 0;
 				}
-
 				break;
 			case 0x22: // get req first send part
 				*buffer = 0x22;
