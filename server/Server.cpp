@@ -137,6 +137,7 @@ void* Server::client_thread(void* in){
 					serviceID = Network::toInt(buffer+2);
 					pathLength = Network::toShort(buffer+6);
 					memcpy(remoteFileNameBuf, buffer+8, pathLength);
+					remoteFileNameBuf[pathLength]=0;
 					tmpFile = FileManager::newTemp();
 					FileManager::getTempPath(tmpFile, localFileNameBuf);
 					tmpCDD = service ? dropboxList : googleDriveList;
@@ -149,12 +150,17 @@ void* Server::client_thread(void* in){
 				case 0x20: // put req first recv part
 					if(!isCont){
 						tmpFile = FileManager::newTemp();
+						service = *(buffer+1);
+						serviceID = Network::toInt(buffer+2);
+						pathLength = Network::toShort(buffer+6);
+						memcpy(remoteFileNameBuf, buffer+8, pathLength);
+						remoteFileNameBuf[pathLength]=0;
 						FileManager::getTempPath(tmpFile, localFileNameBuf);
 						if((tmpFilefd = open(localFileNameBuf,O_WRONLY)) != -1){
-							totalLen = Network::toInt(buffer+1);
+							totalLen = Network::toInt(buffer+8+pathLength);
 							if(ftruncate(tmpFilefd,totalLen) != -1){
-								tmpLen = readLen-9;
-								packageTotalLen = Network::toInt(buffer+1);
+								packageTotalLen = Network::toInt(buffer+12+pathLength);
+								tmpLen = readLen-16-pathLength;
 								fileRecvTotalLen = 0;
 								packageRecvLen = packageTotalLen-tmpLen;
 								buffer += 9;
@@ -193,6 +199,7 @@ void* Server::client_thread(void* in){
 					serviceID = Network::toInt(buffer+2);
 					pathLength = Network::toShort(buffer+6);
 					memcpy(remoteFileNameBuf, buffer+8, pathLength);
+					remoteFileNameBuf[pathLength]=0;
 					tmpFile = FileManager::newTemp();
 					FileManager::getTempPath(tmpFile, localFileNameBuf);
 						// call api to get file
@@ -210,6 +217,7 @@ void* Server::client_thread(void* in){
 					serviceID = Network::toInt(buffer+2);
 					pathLength = Network::toShort(buffer+6);
 					memcpy(remoteFileNameBuf, buffer+8, pathLength);
+					remoteFileNameBuf[pathLength]=0;
 					tmpCDD = service ? dropboxList : googleDriveList;
 					i=0;
 					while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
