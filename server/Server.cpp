@@ -16,22 +16,24 @@ Server::Server(Config* conf){
 		server.sin_port = htons(port);
 
 		printf("Binding Server to port %u ...\n", port);
-		if( bind(sockfd, (struct sockaddr*)&server, sizeof(server)) < 0){ 
+		while( bind(sockfd, (struct sockaddr*)&server, sizeof(server)) < 0){ 
 			perror("Bind failed");
-			exit(1);
-		}else{
-			printf("Start Listening ... \n");
-			listen(sockfd, 10); // 10 == max number of waiting accept connection
+			printf("Retry Binding after 1s ... \n");
+			sleep(1);
+			printf("Binding Server to port %u ...\n", port);
+		}
+
+		printf("Start Listening ... \n");
+		listen(sockfd, 10); // 10 == max number of waiting accept connection
+		client = (struct client_info*) malloc(sizeof(struct client_info));
+		client->sockLen = sizeof(client->conn);
+		while(client->connfd = accept(sockfd, (struct sockaddr*)&(client->conn), (socklen_t*)&client->sockLen)){
+			printf("Incoming Connection detected.\n");
+			Thread::clearThread();
+			pthread_create(&(client->thread), NULL, &Server::client_thread, (void*) client);
+			printf("New Thread %d is created.\n",(int)client->thread);
 			client = (struct client_info*) malloc(sizeof(struct client_info));
 			client->sockLen = sizeof(client->conn);
-			while(client->connfd = accept(sockfd, (struct sockaddr*)&(client->conn), (socklen_t*)&client->sockLen)){
-				printf("Incoming Connection detected.\n");
-				Thread::clearThread();
-				pthread_create(&(client->thread), NULL, &Server::client_thread, (void*) client);
-				printf("New Thread %d is created.\n",(int)client->thread);
-				client = (struct client_info*) malloc(sizeof(struct client_info));
-				client->sockLen = sizeof(client->conn);
-			}
 		}
 	}
 }
