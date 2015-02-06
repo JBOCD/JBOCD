@@ -126,7 +126,7 @@ void Server::client_main(){
 	short pathLength;
 
 	// for get, put
-	int totalLen, fileRecvTotalLen, packageTotalLen, packageRecvLen, tmpLen;
+	unsigned int totalLen, fileRecvTotalLen, packageTotalLen, packageRecvLen, tmpLen;
 
 	// for system result
 	int result;
@@ -140,7 +140,7 @@ void Server::client_main(){
 	do{
 		msgNum++;
 		do{
-			readLen = WebSocket::getMsg(client_conf->connfd, buffer, WebSocket::MAX_PACKAGE_SIZE, isCont, &recvLen, maskKey, &err);
+			readLen = WebSocket::getMsg(client_conf->connfd, buffer, isCont && (WebSocket::MAX_PACKAGE_SIZE > recvLen)? recvLen : WebSocket::MAX_PACKAGE_SIZE , isCont, &recvLen, maskKey, &err);
 			// err handling
 			if(err & WebSocket::ERR_VER_MISMATCH) printf("WebSocket Version not match.\n");
 			if(err & WebSocket::ERR_NOT_WEBSOCKET) printf("Connection is not WebScoket.\n");
@@ -148,7 +148,7 @@ void Server::client_main(){
 			if(err) break;
 
 			// protocol part
-			if(!isCont){
+			if(!isCont && totalLen == fileRecvTotalLen){
 				packageCode = *buffer;
 			}
 			// recv part
@@ -167,13 +167,13 @@ void Server::client_main(){
 					i=0;
 					while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
 					if(tmpCDD[i]){
-						printf("Calling API ... ");
+						printf("Calling API ... \n");
 						result = tmpCDD[i]->ls(remoteFileNameBuf, localFileNameBuf);
-						printf("Done.");
+						printf("Done.\n");
 					}
 					break;
 				case 0x20: // put req first recv part
-					if(!isCont){
+					if(!isCont && totalLen == fileRecvTotalLen){
 						tmpFile = FileManager::newTemp();
 						service = *(buffer+1);
 						serviceID = Network::toInt(buffer+2);
@@ -189,17 +189,16 @@ void Server::client_main(){
 								fileRecvTotalLen = 0;
 								packageRecvLen = packageTotalLen-tmpLen;
 								fileRecvTotalLen+=tmpLen;
-								write(tmpFilefd,buffer-16-pathLength,tmpLen);
+								write(tmpFilefd,buffer+16+pathLength,tmpLen);
 							}else{
 								close(tmpFilefd);
 								tmpFilefd = -1;
 							}
 						}
 					}else if(tmpFilefd != -1){
-						tmpLen = readLen;
 						packageRecvLen -= readLen;
-						fileRecvTotalLen+=tmpLen;
-						write(tmpFilefd,buffer,tmpLen);
+						fileRecvTotalLen+=readLen;
+						write(tmpFilefd,buffer,readLen);
 					}
 					if(totalLen == fileRecvTotalLen){
 						// file completed, start uploading
@@ -208,9 +207,9 @@ void Server::client_main(){
 						i=0;
 						while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
 						if(tmpCDD[i]){
-							printf("Calling API ... ");
+							printf("Calling API ... \n");
 							result = tmpCDD[i]->put(remoteFileNameBuf, localFileNameBuf);
-							printf("Done.");
+							printf("Done.\n");
 						}
 						FileManager::deleteTemp(tmpFile);
 						tmpFile = 0;
@@ -233,9 +232,9 @@ void Server::client_main(){
 					i=0;
 					while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
 					if(tmpCDD[i]){
-						printf("Calling API ... ");
+						printf("Calling API ... \n");
 						result = tmpCDD[i]->get(remoteFileNameBuf, localFileNameBuf);
-						printf("Done.");
+						printf("Done.\n");
 					}
 					break;
 //				case 0x23: // get req continue send part
@@ -250,9 +249,9 @@ void Server::client_main(){
 					i=0;
 					while(tmpCDD[i] && !(tmpCDD[i]->isID(serviceID))) i++;
 					if(tmpCDD[i]){
-						printf("Calling API ... ");
+						printf("Calling API ... \n");
 						result = tmpCDD[i]->del(remoteFileNameBuf);
-						printf("Done.");
+						printf("Done.\n");
 					}
 					break;
 				case 0x2A: // create dir
@@ -291,7 +290,7 @@ void Server::client_main(){
 			case 0x04: // ls dir req
 				*buffer = 0x04;
 				if((tmpFilefd = open(localFileNameBuf,O_RDONLY)) != -1){
-					Network::toBytes((int) lseek(tmpFilefd, 0L, SEEK_END)+1, buffer+1);
+					Network::toBytes((int) lseek(tmpFilefd, 0L, SEEK_END), buffer+1);
 					lseek(tmpFilefd, 0L, SEEK_SET);
 					readLen = read(tmpFilefd, buffer + 5, WebSocket::MAX_CONTENT_SIZE - 5);
 					send(client_conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 5+readLen), 0);
@@ -306,39 +305,31 @@ void Server::client_main(){
 				break;
 			case 0x20: // put req first recv part
 //			case 0x21: // put req continue recv part
-				*buffer = packageCode;
-				if(tmpFilefd != -1 && !packageRecvLen){
-					*(buffer+1) = 0x00;
-					Network::toBytes((int) packageTotalLen,buffer+2);
-					send(client_conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 6), 0);
-					fileRecvTotalLen += packageTotalLen;
-					if(fileRecvTotalLen == totalLen){
-						// end of read file
-						// close file
-						close(tmpFilefd);
-						// call api to read
+				if(totalLen == fileRecvTotalLen){
+					*buffer = packageCode;
+					if(tmpFilefd != -1 && !packageRecvLen){
+						*(buffer+1) = 0x00;
+						Network::toBytes((int) packageTotalLen,buffer+2);
+						send(client_conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 6), 0);
+					}else{
+						if(tmpFilefd == -1){
+							*(buffer+1) = 0xFF; // file not create Error
+						}else if(packageRecvLen){
+							*(buffer+1) = 0xFE; // file recv length not equal to sent length
+							// err occur, close file and release
+							close(tmpFilefd);
+							tmpFilefd = -1;
+						}
+						send(client_conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 2), 0);
 						FileManager::deleteTemp(tmpFile);
-						tmpFile=0;
+						tmpFile = 0;
 					}
-				}else{
-					if(tmpFilefd == -1){
-						*(buffer+1) = 0xFF; // file not create Error
-					}else if(packageRecvLen){
-						*(buffer+1) = 0xFE; // file recv length not equal to sent length
-						// err occur, close file and release
-						close(tmpFilefd);
-						tmpFilefd = -1;
-					}
-					send(client_conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 2), 0);
-					FileManager::deleteTemp(tmpFile);
-					tmpFile = 0;
 				}
-
 				break;
 			case 0x22: // get req first send part
 				*buffer = 0x22;
 				if((tmpFilefd = open(localFileNameBuf,O_RDONLY)) != -1){
-					Network::toBytes((int) (totalLen = lseek(tmpFilefd, 0L, SEEK_END)+1), buffer+1);
+					Network::toBytes((int) (totalLen = lseek(tmpFilefd, 0L, SEEK_END)), buffer+1);
 					lseek(tmpFilefd, 0L, SEEK_SET);
 					
 					Network::toBytes((int) (readLen = read(tmpFilefd, buffer + 9, WebSocket::MAX_CONTENT_SIZE - 9)), buffer+5);
@@ -347,12 +338,12 @@ void Server::client_main(){
 					while(totalLen && readLen){
 						*buffer = 0x23;
 						Network::toBytes((int) lseek(tmpFilefd, 0L, SEEK_CUR), buffer+1);
-						lseek(tmpFilefd, 0L, SEEK_SET);
 						
 						Network::toBytes((int) (readLen = read(tmpFilefd, buffer + 9, WebSocket::MAX_CONTENT_SIZE - 9)), buffer+5);
 						send(client_conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 9+readLen), 0);
 						totalLen -= readLen;
 					}
+					fileRecvTotalLen = totalLen;
 					close(tmpFilefd);
 					tmpFilefd = -1;
 				}else{
@@ -377,11 +368,12 @@ void Server::client_main(){
 				isEnd = true;
 				break; 
 			default:
-				for(int i=0;i<readLen;i++){
-					putchar(buffer[i]);
-				}
-				memcpy(buffer, "hello world", 12);
-				send(client_conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 12), 0);
+//				for(int i=0;i<readLen;i++){
+//					putchar(buffer[i]);
+//				}
+//				memcpy(buffer, "hello world", 12);
+//				send(client_conf->connfd, buffer, WebSocket::sendMsg(buffer, buffer, 12), 0);
+				;
 		}
 	}while(!isEnd);
 	free(buffer);
