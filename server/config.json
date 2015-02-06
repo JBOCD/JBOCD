@@ -18,7 +18,10 @@
 		}
 	},
 	"server":{
-		"port":3389
+		"port":3389,
+		"maxActiveClient":1000, // Server will reject any coming client if there is "maxClient" active connection
+		"maxWaitClient":10, // Server only have "maxWaitClient" waiting for accept
+		"bindRetryInterval":1 // unit: second
 	},
 	"cloudDriver":{
 		// INSTALL DRIVER

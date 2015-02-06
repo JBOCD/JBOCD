@@ -1,91 +1,26 @@
-Server::Server(Config* conf){
-	int sockfd = 0, connfd = 0;
-	struct sockaddr_in server;
-	
-	printf("Initializing Server ...\n");
-	// setting signal
-	signal(SIGCHLD, &Server::_client_close);
-	conn_count = 0;
-	max_conn = json_object_get_int(conf->get("server.maxActiveClient"));
-	
-	printf("Starting Server ...\n");
-	port = (short) json_object_get_int(conf->get("server.port"));
-
-
-	sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	if( ( sockfd = socket(AF_INET, SOCK_STREAM, 0) ) < 0){
-		printf("Could not create socket.");
-		exit(1);
-	}else{
-		server.sin_family = AF_INET;
-		server.sin_addr.s_addr = INADDR_ANY;
-		server.sin_port = htons(port);
-
-		printf("Binding Server to port %u ...\n", port);
-		while( bind(sockfd, (struct sockaddr*)&server, sizeof(server)) < 0){ 
-			perror("Bind failed");
-			printf("Retry Binding after %ds ... \n", json_object_get_int(conf->get("server.bindRetryInterval")));
-			sleep(json_object_get_int(conf->get("server.bindRetryInterval")));
-			printf("Binding Server to port %u ...\n", port);
-		}
-
-		printf("Start Listening ... \n");
-		listen(sockfd, json_object_get_int(conf->get("server.maxActiveClient")));
-		client_conf = (struct client_info*) malloc(sizeof(struct client_info));
-		client_conf->sockLen = sizeof(client_conf->conn);
-		while(client_conf->connfd = accept(sockfd, (struct sockaddr*)&(client_conf->conn), (socklen_t*)&client_conf->sockLen)){
-			conn_count++;
-			if(max_conn > conn_count){
-				// accept client
-				if((child_pid = fork()) > 0){
-					// parent
-					close(client_conf->connfd);
-				}else if(child_pid == 0){
-					// child
-					close(sockfd); // close listen
-				}
-			}else{
-				// reject client, max client reach
-				close(client_conf->connfd)
-			}
-/*
-			printf("Incoming Connection detected.\n");
-			Thread::clearThread();
-			pthread_create(&(client->thread), NULL, &Server::client_thread, (void*) client);
-			printf("New Thread %d is created.\n",(int)client->thread);
-			client = (struct client_info*) malloc(sizeof(struct client_info));
-			client->sockLen = sizeof(client->conn);
-*/
-		}
-	}
-}
-
-void Server::client_main(){
-	long long recvLen=0;
-	int readLen=0, err;
-	unsigned char maskKey[4];
-	unsigned char* buffer = (unsigned char*) malloc(WebSocket::MAX_PACKAGE_SIZE);
-	bool isCont = false;
-	bool isEnd = false;
-
+void Client::load_CDDriver(){
 	sql::Statement* stmt;
 	sql::ResultSet* res;
-
-	unsigned char packageCode;
-
-	CDDriver ** dropboxList;
-	CDDriver ** googleDriveList;
-	CDDriver ** tmpCDD;
-
+	int counter=0;
 	// database get all list
 	stmt = MySQL::getCon()->createStatement();
-	int i=0;
+	int i=0,j=0;
 	res = stmt->executeQuery("SELECT COUNT(id) FROM dropbox");
 	if(res->next()){
 		i=res->getInt(1);
+		counter+=i;
 		dropboxList = (CDDriver **) malloc(sizeof(CDDriver*) * (i+1));
 		delete res;
 	}
+
+	res = stmt->executeQuery("SELECT COUNT(id) FROM googledrive");
+	if(res->next()){
+		j=res->getInt(1);
+		counter+=i;
+		googleDriveList = (CDDriver **) malloc(sizeof(CDDriver*) * (j+1));
+		delete res;
+	}
+
 	if(i){
 		i=0;
 		res = stmt->executeQuery("SELECT `id`, `key` FROM dropbox");
@@ -95,23 +30,43 @@ void Server::client_main(){
 		dropboxList[i]=0;
 		delete res;
 	}
-	res = stmt->executeQuery("SELECT COUNT(id) FROM googledrive");
-	if(res->next()){
-		i=res->getInt(1);
-		googleDriveList = (CDDriver **) malloc(sizeof(CDDriver*) * (i+1));
-		delete res;
-	}
-	if(i){
-		i=0;
+	if(j){
+		j=0;
 		res = stmt->executeQuery("SELECT `id`, `key` FROM googledrive");
 		while(res->next()){
-			googleDriveList[i++] = new GoogleDrive(res->getString(2)->c_str(), res->getInt(1));
+			googleDriveList[j++] = new GoogleDrive(res->getString(2)->c_str(), res->getInt(1));
 		}
-		googleDriveList[i]=0;
+		googleDriveList[j]=0;
 		delete res;
 	}
 	// we assume that no extra cloud drive will add into the system
 	// previous COUNT(id) should be equal to now COUNT(id)
+
+}
+
+
+void Client::doHandshake(){
+//	if not using websocket, how to confirm message exact size in our protocol?
+	recv(client_conf->connfd, buffer, WebSocket::MAX_PACKAGE_SIZE, 0);
+	write(client_conf->connfd, buffer, WebSocket::getHandShakeResponse(buffer, buffer, &err));
+}
+
+Client::Client(Config* conf, struct client_info* conn_conf){
+	this.conf = conf;
+	this.conn_conf = conn_conf;
+
+	int err;
+	bool isCont = false;
+	bool isEnd = false;
+	CDDriver ** tmpCDD;
+
+	unsigned char packageCode;
+
+	buffer = (unsigned char*) malloc(WebSocket::MAX_PACKAGE_SIZE);
+	recvLen=0;
+	readLen=0;
+	isCont = 0; // if recvLen != readLen, then isCont == true, it mean it continue to read;
+
 
 	// file management
 	char* remoteFileNameBuf = new char[1024];
@@ -133,10 +88,9 @@ void Server::client_main(){
 
 	// debug variable
 	int msgNum = 0;
-//	if not using websocket, how to confirm message exact size in our protocol?
-	recv(client_conf->connfd, buffer, WebSocket::MAX_PACKAGE_SIZE, 0);
-	write(client_conf->connfd, buffer, WebSocket::getHandShakeResponse(buffer, buffer, &err));
-	isCont = recvLen; // if recvLen != readLen, then isCont == true, it mean it continue to read;
+
+	Client::doHandshake();
+
 	do{
 		msgNum++;
 		do{
@@ -148,9 +102,8 @@ void Server::client_main(){
 			if(err) break;
 
 			// protocol part
-			if(!isCont){
-				packageCode = *buffer;
-			}
+			if(!isCont)	packageCode = *buffer;
+
 			// recv part
 			switch(packageCode){
 				case 0x02: // ls acc req

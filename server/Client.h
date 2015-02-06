@@ -27,19 +27,33 @@
 // MAX_CLIENT + MAX_FORK + "0-2" + "3-9" == MAX open file
 // for maximum connection, MAX_CLIENT == MAX_FORK
 // at current stage, not implement fork yet.
-#define MAX_CLIENT 1014
-#define MAX_FORK 0
-class Server{
+struct client_info{
+	struct sockaddr_in conn;
+	pthread_t thread;
+	int connfd;
+	int sockLen;
+};
+class Client{
 	private:
 		Config* conf;
-		short port;
-		pid_t child_pid;
-		struct client_info* client_conf;
-		static int conn_count;
-		static int max_conn;
-		static void* client_main();
+		struct client_info* conn_conf;
+
+// Cloud Drive API
+		CDDriver ** cloudDrives; // new
+		CDDriver ** dropboxList; // deprecated
+		CDDriver ** googleDriveList; // deprecated
+
+// WebSocket
+		unsigned char maskKey[4];
+		unsigned char* buffer;
+		long long recvLen; // receive length == A WebSocket packet payload length
+		int readLen; // read length == how many bytes of the WebSocket packet read into buffer
+
+// function
+		void load_CDDriver();
+		void doHandshake();
 	public:
-		Server(Config*);
+		Client(Config*, struct client_info*);
 		static void _client_close(int signum);
 };
 
