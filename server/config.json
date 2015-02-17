@@ -21,10 +21,8 @@
 		"port":3389,
 		"maxActiveClient":1000, // Server will reject any coming client if there is "maxClient" active connection
 		"maxWaitClient":10, // Server only have "maxWaitClient" waiting for accept
-		"bindRetryInterval":1 // unit: second
-	},
-	"cloudDriver":{
-		// INSTALL DRIVER
+		"bindRetryInterval":1, // unit: second
+		"maxThreadPerConnection": 100
 	},
 	"socket":{
 		// max offload of Standard frame with TCP = 1460 Bytes
@@ -44,8 +42,13 @@
 			// this directory should have no useful data inside this folder
 			// this path will ERASE before server start
 			// if this path have '/', it will become a folder
-			// if this path have not '/', it will become file prefix
-			"dirpath" : "/var/JBOCD/tmp/" 
+			// if this path have not '/', it will become tmp folder prefix
+			"dirpath" : "/var/JBOCD/tmp/",
+			"maxAllocate" : 1073741824 // 1 GB per connection
 		}
+	},
+	"memory":{
+		// 50MB for each client
+		"maxAllocate" : 52428800
 	}
 }

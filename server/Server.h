@@ -8,14 +8,9 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <signal.h>
-#include <pthread.h>
 #include <fcntl.h>
-#include <cppconn/statement.h>
-#include <cppconn/resultset.h>
 
-#include "lib/GoogleDrive.h"
-#include "lib/Dropbox.h"
-
+#include "Client.h"
 
 #ifndef SERVER_H
 #define SERVER_H
@@ -41,6 +36,7 @@ class Server{
 	public:
 		Server(Config*);
 		static void _client_close(int signum);
+		static void _server_close(int signum);
 };
 
 #include "Server.cpp"

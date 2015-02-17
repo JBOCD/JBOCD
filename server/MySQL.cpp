@@ -1,4 +1,4 @@
-MySQL::MySQL(Config* conf){
+MySQL::init(Config* conf){
 	driver = sql::mysql::get_driver_instance();
 	const char* host = json_object_get_string(conf->get("database.MySQL.host"));
 	const char* port = json_object_get_string(conf->get("database.MySQL.port"));

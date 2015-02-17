@@ -13,11 +13,8 @@ unsigned long long Network::toLongLong(unsigned char* in){
 }
 unsigned char* Network::toChars(unsigned char* in){
 	int len = Network::toInt(in);
-	unsigned char * out = (unsigned char*) malloc(len+1);
-	in = in+4;
-	for(int i=0;i<len;i++){
-		out[i]=in[i];
-	}
+	unsigned char * out = (unsigned char*) MemManager::allocate(len+1);
+	memcpy(out, in+4, len);
 	out[len]=0;
 	return out;
 }
