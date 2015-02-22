@@ -51,3 +51,7 @@ Dropbox::~Dropbox(){
 		tmpStr = 0;
 	}
 }
+
+CDDriver* createObject(const char* accessToken, int id){
+	return new Dropbox(accessToken, id);
+}

@@ -1,6 +1,6 @@
-void WebSocket::init(Config* conf){
-	MAX_PACKAGE_SIZE = json_object_get_int(conf->get("socket.maxPackageSize"));
-	MAX_CONTENT_SIZE = json_object_get_int(conf->get("socket.maxContentSize"));
+void WebSocket::init(){
+	MAX_PACKAGE_SIZE = json_object_get_int(Config::get("socket.maxPackageSize"));
+	MAX_CONTENT_SIZE = json_object_get_int(Config::get("socket.maxContentSize"));
 }
 
 int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err){

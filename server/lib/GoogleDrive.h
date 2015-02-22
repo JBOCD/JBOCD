@@ -3,6 +3,7 @@
 
 #include "CDDriver.h"
 
+extern "C" CDDriver* createObject(const char*, int);
 class GoogleDrive: public CDDriver{
 	protected:
 		char* tmpStr;

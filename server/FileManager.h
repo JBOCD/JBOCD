@@ -30,7 +30,7 @@ class FileManager{
 		static pthread_mutex_t allocate_mutex;
 		FileManager(){}
 	public:
-		static void init(Config*);
+		static void init();
 		static unsigned int* newTemp();
 		static void deleteTemp(unsigned int* file_store);
 		static void freeTemp();

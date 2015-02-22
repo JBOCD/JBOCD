@@ -9,137 +9,131 @@ Defination:
 Protocol:
 
 case 0x00 00000000: client
+	1 byte int: Operation ID
 	4 byte int: send account id
 	32byte string: token_hash sha256
 
 case 0x00 00000000: server reject
+	1 byte int: Operation ID
 
 case 0x01 00000001: server accept connection
+	1 byte int: Operation ID
 
 case 0x02 00000010: client get Service
+	1 byte int: Operation ID
 
 case 0x02 00000010: server get Service
-	[
+	1 byte int: Operation ID
+	2 byte int: number of Service
+	(
 		4 byte int: service UID
-		8 byte int: Available Size
-		2 byte int: service name length "n"
-		n byte char: service name
-	]*
+//		8 byte int: Available Size // record not found
+//		2 byte int: service name length "n" // record not found
+//		n byte char: service name // record not found
+	)*
 
 case 0x03 00000011: client get Drive
+	1 byte int: Operation ID
 
 case 0x03 00000011: server get Drive
-	[
+	1 byte int: Operation ID
+	2 byte int: number of Drive
+	(
 		4 byte int: Drive ID
+		4 byte int: Algorithm ID
+		8 Byte int: Total Size
 		2 byte int: number of Service
-		[
+		(
 			4 byte int: Service UID
 			8 byte int: Allocate Size
-		]+
+		)+
 		2 byte int: Drive name length "n"
 		n byte char: Drive name
-	]*
+	)*
 
 case 0x04 00000100: client ls dir/file
 	1 byte int: Operation ID
 	4 byte int: Drive ID
-	2 byte int: dir path length n
-	n byte str: dir path
+	8 byte int: Parent ID
 
 case 0x04 00000100: server ls dir/file
 	1 byte int: Operation ID
 	2 byte int: number of files
-	[
-		4 byte int: File ID
+	(
+		8 byte int: File ID
+		8 byte int: File size
 		2 byte int: File name length "n"
 		n byte char: File name
-		1 byte boolean: is File
-		case is File == false
+	)*
 
-		case is File == true
-			8 byte int: file size
-			8 byte int: number of chunk
-//			4 byte int: number of separate files
-//			[
-//				4 byte int: remote File name
-//				n byte char: remote file name
-//				4 byte int: Service UID
-//			]+
-	]*
+case 0x05 00000101: server ls dir/file
+	1 byte int: Operation ID
+	(
+			8 byte int: File ID
+			8 byte int: File size
+			2 byte int: File name length "n"
+			n byte char: File name
+	)*
 
 // file opearation, 0x20 should exist
-case 0x20 00100000: client put (first chunk upload)
+
+case 0x20 00100000: client new directory / file
 	1 byte int: Operation ID
-	4 byte int: Parent ID
-	8 byte int: File size
+	4 byte int: Drive ID
+	8 byte int: Parent ID
+	8 byte int: File size (always 0)
 	2 byte int: File Name length "n"
 	n byte char: File Name
+
+case 0x20 00100000: server new directory / file
+	1 byte int: Operation ID
+	8 byte int: File ID ( not 0 is file made, 0 is file create fail)
+
+case 0x21 00100001: client put
+	1 byte int: Operation ID
 	4 byte int: Drive ID
 	4 byte int: Service UID
-	4 byte int: File chunk sequence number
+	8 byte int: File ID
+	8 byte int: File chunk sequence number
 	2 byte int: Remote File name length "m"
 	m byte char: Remote File name
 	4 byte int: send file chunk length "k"
 	k byte: File chuck Content
 
-case 0x21 00100001: client put (other chunks upload)
+case 0x21 00100001: server put
 	1 byte int: Operation ID
-	4 byte int: File ID
-	4 byte int: Drive ID
-	4 byte int: Service UID
-	4 byte int: File chunk sequence number
-	2 byte int: Remote File name length "m"
-	m byte char: Remote File name
-	4 byte int: send file chunk length "k"
-	k byte: File chuck Content
-
-case 0x21 00100001: server put (first chunk upload && other chunks upload)
-	1 byte int: Operation ID
-	4 byte int: File ID
-	4 byte int: File chunk sequence number
+	8 byte int: File chunk sequence number
 	1 byte int: status ( 0 is file created, other are error code)
 	4 byte int: recv len (if status is 0, then it exist 4byte file len, otherwise, 0byte)
 
 case 0x22 00100010: client get
 	1 byte int: Operation ID
 	4 byte int: Drive ID
-	4 byte int: File ID
+	8 byte int: File ID
 
 case 0x22 00100010: server get (chunk first time download only)
 	1 byte int: Operation ID
-	4 byte int: File chunk sequence number
-	4 byte int: send file length
+	8 byte int: File chunk sequence number
+	4 byte int: send chunk length
 	4 byte int: send current packet payload len "n" (Range: 0 - payload len)
-	n byte: (part of) file payload
+	n byte: (part of) chunk payload
 
 case 0x23 00100011: server get (chunk continue download)
 	1 byte int: Operation ID
-	4 byte int: File chunk sequence number
-	4 byte int: send start byte position
-	4 byte int: send current packet payload len
-	n byte: part of file payload
+	8 byte int: File chunk sequence number
+	4 byte int: send chunk start byte position
+	4 byte int: send current packet payload len "n" (Range: 0 - payload len)
+	n byte: part of chunk payload
 
 // if File ID is not empty, do nothing at current stage
 case 0x28 00101000: client delete
 	1 byte int: Operation ID
 	4 byte int: Drive ID
-	2 byte int: File ID
+	8 byte int: File ID
 
 case 0x28 00101000: server delete
 	1 byte int: Operation ID
 	1 byte int: status ( 0 is file delete, other are error code)
-
-case 0x2A 00101010: client mkdir
-	1 byte int: Operation ID
-	4 byte int: Parent ID
-	8 byte int: File size (always 0)
-	2 byte int: File Name length "n"
-	n byte char: File Name
-	4 byte int: Drive ID
-
-case 0x2A 00101010: server mkdir
-	1 byte int: Operation ID
-	1 byte int: status ( 0 is file made, other are error code)
 
 // close code,
 case 0x88 10001000: server close connection (server only)

@@ -1,7 +1,7 @@
-void MemManager::init(Config* conf){
+void MemManager::init(){
 	free_list.next = NULL;
 	mutex = PTHREAD_MUTEX_INITIALIZER;
-	maxAllocate = (unsigned int)json_object_get_int(conf->get("memory.maxAllocate"));
+	maxAllocate = (unsigned int)json_object_get_int(Config::get("memory.maxAllocate"));
 }
 
 void* MemManager::allocate(unsigned int size){

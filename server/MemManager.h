@@ -21,7 +21,7 @@ class MemManager{
 		MemManager(){}
 		static void flush(unsigned int targetSize);
 	public:
-		static void init(Config*);
+		static void init();
 		static void* allocate(unsigned int size, bool isExactSize);
 		static void* allocate(unsigned int size);
 		static void free(void* mem);

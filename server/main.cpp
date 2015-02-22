@@ -3,7 +3,6 @@
 #include "Config.h"
 #include "MemManager.h"
 #include "FileManager.h"
-#include "MySQL.h"
 #include "Network.h"
 #include "Thread.h"
 #include "WebSocket.h"
@@ -12,23 +11,18 @@
 using namespace std;
 
 int main() {
-	Config* config=new Config();
-
-	// connect to DB
-	MySQL* db = new MySQL(config);
+	Config::init();
 
 	// init Memory Manager
-	MemManager::init(config);
+	MemManager::init();
 
 	// init File Manager
-	FileManager::init(config);
+	FileManager::init();
 
 	// init WebSocket
-	WebSocket::init(config);
+	WebSocket::init();
 	
 	// start server
 	new Server(config);
-
-	delete db;
 }
 

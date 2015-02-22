@@ -1,4 +1,4 @@
-Server::Server(Config* conf){
+Server::Server(){
 	int sockfd = 0, connfd = 0;
 	struct sockaddr_in server;
 	
@@ -6,10 +6,10 @@ Server::Server(Config* conf){
 	// setting signal
 	signal(SIGCHLD, &Server::_client_close);
 	conn_count = 0;
-	max_conn = json_object_get_int(conf->get("server.maxActiveClient"));
+	max_conn = json_object_get_int(Config::get("server.maxActiveClient"));
 	
 	printf("Starting Server ...\n");
-	port = (short) json_object_get_int(conf->get("server.port"));
+	port = (short) json_object_get_int(Config::get("server.port"));
 
 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -24,13 +24,13 @@ Server::Server(Config* conf){
 		printf("Binding Server to port %u ...\n", port);
 		while( bind(sockfd, (struct sockaddr*)&server, sizeof(server)) < 0){ 
 			perror("Bind failed");
-			printf("Retry Binding after %ds ... \n", json_object_get_int(conf->get("server.bindRetryInterval")));
-			sleep(json_object_get_int(conf->get("server.bindRetryInterval")));
+			printf("Retry Binding after %ds ... \n", json_object_get_int(Config::get("server.bindRetryInterval")));
+			sleep(json_object_get_int(Config::get("server.bindRetryInterval")));
 			printf("Binding Server to port %u ...\n", port);
 		}
 
 		printf("Start Listening ... \n");
-		listen(sockfd, json_object_get_int(conf->get("server.maxActiveClient")));
+		listen(sockfd, json_object_get_int(Config::get("server.maxActiveClient")));
 		client_conf = (struct client_info*) malloc(sizeof(struct client_info));
 		client_conf->sockLen = sizeof(client_conf->conn);
 		while(client_conf->connfd = accept(sockfd, (struct sockaddr*)&(client_conf->conn), (socklen_t*)&(client_conf->sockLen))){
@@ -38,11 +38,16 @@ Server::Server(Config* conf){
 				// accept client
 				switch(child_pid = fork()){
 					case 0:
-						// child.
+						// child
 						close(sockfd); // close listen
-//						signal(SIGUSR1, &Server::_server_close); // Set signal handler when server close
+						signal(SIGUSR1, &Server::_server_close); // Set signal handler when server close
+
+						// connect to DB
+						MySQL::init();
+
+						// create tmpfile pool
 						FileManager::newProcess();
-						new Cliet(conf, client_conf);
+						new Cliet(client_conf);
 						FileManager::endProcess();
 						close(client_conf->connfd);
 						exit(0);
@@ -67,6 +72,6 @@ void Server::_client_close(int signum){
 		conn_count--;
 	}
 }
-//void Server::_server_close(int signum){
+void Server::_server_close(int signum){
 	// need to create a pid array to manaage
-//}
+}

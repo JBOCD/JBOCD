@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -10,27 +11,27 @@
 #include <signal.h>
 #include <pthread.h>
 #include <fcntl.h>
+#include <dlfcn.h>
 #include <cppconn/statement.h>
 #include <cppconn/resultset.h>
+#include <cppconn/sqlstring.h>
+#include <cppconn/prepared_statement.h> //http://forums.mysql.com/read.php?167,592107,592107
 
-#include "lib/GoogleDrive.h"
-#include "lib/Dropbox.h"
-
+#include "lib/CDDriver.h"
 
 #ifndef CLIENT_H
 #define CLIENT_H
 
-// MAX open file = 1024
-// stdin, stdout, stderr --> 0-2
-// Master file desp --> 3-9
-// Maximum thread in process
-// MAX_CLIENT + MAX_FORK + "0-2" + "3-9" == MAX open file
-// for maximum connection, MAX_CLIENT == MAX_FORK
-// at current stage, not implement fork yet.
 struct client_info{
 	struct sockaddr_in conn;
 	int connfd;
 	int sockLen;
+};
+
+struct clouddriver_handler_list{
+	void* handler;
+	int lid;
+	CDDriver* (*newCDDriver)(const char*, unsigned int);
 };
 
 struct response_thread{
@@ -39,32 +40,87 @@ struct response_thread{
 };
 
 struct client_response{
-	unsigned char operationID;
 	unsigned char command;
 	void * info;
 	struct client_response* next;
 };
-
-struct client_list{
+// 0x02
+struct client_clouddrive_root{
 	unsigned char operationID;
-	int did;
-	char* dirPath;
+	CDDriver ** root;
 };
+
+// 0x03
+struct client_clouddrive{
+	unsigned int cdid;
+	unsigned long long size;
+	struct client_clouddrive * next;
+};
+struct client_logical_drive{
+	unsigned int ldid;
+	unsigned int algoid;
+	unsigned long long size;
+	char* name;
+	struct client_logical_drive * next;
+	struct client_clouddrive * root;
+};
+struct client_logical_drive_root{
+	unsigned char operationID;
+	struct client_logical_drive * root;
+};
+
+// 0x04
+struct client_list{
+	unsigned long long fid;
+	unsigned long long fileSize;
+	char* name;
+	struct client_list* next;
+};
+struct client_list_root{
+	unsigned char operationID;
+	unsigned char numberOfFile;
+	struct client_list* root;
+};
+
+// 0x20
+struct client_make_file{
+	unsigned char operationID;
+	unsigned long long fid;
+};
+
+// 0x21
 struct client_save_file{
 	unsigned char operationID;
-	unsigned int fid;
-	unsigned int did;
-	unsigned int sid;
-	unsigned int seqnum;
+	unsigned int ldid;
+	unsigned int cdid;
+	unsigned long long fid;
+	unsigned long long seqnum;
 	char* remoteName;
 	unsigned int* tmpFile;
-	int tmpFileID;
 	unsigned int chunkSize;
+	unsigned char isInsertOK;
+};
+
+// 0x22
+struct client_read_file{
+	unsigned char operationID;
+	unsigned int ldid;
+	unsigned int cdid;
+	unsigned int fileid;
+	unsigned int seqnum;
+	unsigned char* chunkName;
+	unsigned int chunkSize;
+};
+
+//0x28
+struct client_del_file{
+	unsigned char operationID;
+	unsigned int ldid;
+	unsigned int fileid;
 };
 
 class Client{
 	private:
-		Config* conf;
 		struct client_info* conn_conf;
 		pthread_t responseThread;
 
@@ -76,6 +132,8 @@ class Client{
 		CDDriver ** dropboxList; // deprecated
 		CDDriver ** googleDriveList; // deprecated
 
+// CloudDriver handler list
+		struct clouddriver_handler_list* cd_handler;
 // WebSocket
 		CDDriver ** tmpCDD;
 		int err;
@@ -93,13 +151,24 @@ class Client{
 		pthread_mutex_t res_mutex;
 		pthread_mutex_t res_queue_mutex;
 
-
+// prepareStatement List
+		sql::PreparedStatement* check_token;
+		sql::PreparedStatement* get_cloud_drive_list;
+		sql::PreparedStatement* get_number_of_library;
+		sql::PreparedStatement* get_list;
+		sql::PreparedStatement* get_user_logical_drive;
+		sql::PreparedStatement* get_user_cloud_drive_by_ldid;
+		sql::PreparedStatement* check_user_logical_drive;
+		sql::PreparedStatement* insert_chunk;
+		sql::PreparedStatement* get_file_chunk;
+		sql::PreparedStatement* get_next_fileid;
+		sql::PreparedStatement* create_file;
 // function
 		void load_CDDriver();
 		void doHandshake();
 		void commandInterpreter();
 	public:
-		Client(Config*, struct client_info*);
+		Client(struct client_info*);
 		static void _client_close(int signum);
 };
 

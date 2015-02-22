@@ -9,6 +9,7 @@ struct thread_queue{
 };
 
 struct thread_info{
+	struct thread_info* next;
 	pthread_t tid;
 	void* cb;
 	void* arg;
@@ -16,14 +17,19 @@ struct thread_info{
 
 class Thread{
 	private:
-		static struct thread_queue* root;
+		static struct thread_queue* delRoot;
+		static struct thread_queue* createRoot;
+		static struct thread_queue* createRootLast;
+		static pthread_t create_thread_tid;
 		static pthread_mutex_t del_queue_mutex;
 		static pthread_mutex_t new_thread_mutex;
+		static pthread_mutex_t new_thread_queue_mutex;
 		static pthread_mutex_t counter_mutex;
 		static int maxThread;
 		static int curThread;
 
 		static void addDelQueue(pthread_t t);
+		static void createThreadFromQueue();
 		static void newThreadInit(void* info);
 		static void clearThread(); // only main thread can use this function
 		Thread();
@@ -32,9 +38,10 @@ class Thread{
 		static void create(void* callback, void* info);
 };
 
-struct thread_queue* Thread::root = NULL;
+struct thread_queue* Thread::delRoot = NULL, Thread::createRoot = NULL;
 pthread_mutex_t Thread::del_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t Thread::new_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t Thread::new_thread_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t Thread::counter_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #include "Thread.cpp"

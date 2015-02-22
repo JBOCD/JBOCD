@@ -1,9 +1,9 @@
-void FileManager::init(Config* conf){
+void FileManager::init(){
 	char* tmpStr = (char*) MemManager::allocate(512);
 	nameCount = 0;
 
-	dirpath = json_object_get_string(conf->get("file.temp.dirpath"));
-	maxAllocate = json_object_get_int(conf->get("file.temp.maxAllocate"));
+	dirpath = json_object_get_string(Config::get("file.temp.dirpath"));
+	maxAllocate = json_object_get_int(Config::get("file.temp.maxAllocate"));
 
 	sprintf(tmpStr, "rm -r %s*",dirpath);
 	system(tmpStr); // -_-!!

@@ -10,14 +10,14 @@
 
 class Config{
 	protected:
-		json_object *root, *nul;
+		static json_object *root, *nul;
 
 	private:
-		char tmpStr[CONFIG_MAX_KEY+1]; //config file key name should not exceed 20 char
+		static char tmpStr[CONFIG_MAX_KEY+1]; //config file key name should not exceed 20 char
 	public:
-		Config();
-		json_object *getFrom(const char *path, json_object *curRoot);
-		json_object *get(const char *path);
+		static void init();
+		static json_object *getFrom(const char *path, json_object *curRoot);
+		static json_object *get(const char *path);
 };
 
 #include "Config.cpp"

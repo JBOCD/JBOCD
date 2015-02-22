@@ -26,7 +26,7 @@ class WebSocket{
 		static int MAX_PACKAGE_SIZE;
 		static int MAX_CONTENT_SIZE;
 
-		static void init(Config* conf);
+		static void init();
 		static int  getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err);						// return buffer size, err return error code, request == buf is safe
 		static int  getMsg(int fd, unsigned char* buf, int size, bool isContinue, long long* payloadLen, unsigned char* maskKey, int* err);	// return buffer size, err return error code
 		static int  sendMsg(unsigned char* buf, unsigned char* msg, long long len);									// return buffer size

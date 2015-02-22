@@ -1,4 +1,3 @@
-Network::Network(){}
 unsigned short Network::toShort(unsigned char* in){
 	unsigned short out = 0;
 	return (out | in[0]) << 8 | in[1];
@@ -39,12 +38,8 @@ void Network::toBytes(long long value, unsigned char* ptr){
 	ptr[0] = (unsigned char) ( (value >> 56 ) & 0xFF);
 }
 void Network::toBytes(char* value, unsigned char* ptr){
-	int len = 0;
-	while(*(value+len)!=0){
-		len++;
-		*(ptr+len+4) = *(value+len);
-	}
-	Network::toBytes(len, ptr);
+	strcpy(ptr+2, value);
+	Network::toBytes(strlen(value), ptr);
 }
 int Network::getLength(short value, int len){
 	return len + 2;
@@ -56,9 +51,5 @@ int Network::getLength(long long value, int len){
 	return len + 8;
 }
 int Network::getLength(char* value, int len){
-	int tmp = 0;
-	while(*(value+tmp)!=0){
-		tmp++;
-	}
-	return len+4+tmp;
+	return len + 2 + strlen(value);
 }

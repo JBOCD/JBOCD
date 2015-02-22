@@ -1,4 +1,4 @@
-Config::Config(){
+void Config::init(){
 	FILE *fPtr=fopen("/etc/JBOCD/config.json", "r");
 	char *buffer;
 	unsigned long fsize;

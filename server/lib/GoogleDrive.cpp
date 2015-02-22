@@ -51,3 +51,7 @@ GoogleDrive::~GoogleDrive(){
 		tmpStr = 0;
 	}
 }
+
+CDDriver* createObject(const char* accessToken, int id){
+	return new GoogleDrive(accessToken, id);
+}

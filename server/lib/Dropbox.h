@@ -3,6 +3,7 @@
 
 #include "CDDriver.h"
 
+extern "C" CDDriver* createObject(const char*, int);
 class Dropbox: public CDDriver{
 	protected:
 		char* tmpStr;

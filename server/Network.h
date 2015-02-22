@@ -1,9 +1,12 @@
+#include <cstring>
+
 #ifndef NETWORK_H
 #define NETWORK_H
 
 class Network{
-	public:
+	protected:
 		Network();
+	public:
 
 		// in 32 bit system, short=16bit, int=32bit, long=32bit, long long=64bit
 		// in 64 bit system, short=16bit, int=32bit, long=64bit, long long=64bit

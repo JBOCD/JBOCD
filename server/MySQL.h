@@ -18,10 +18,10 @@ class MySQL{
 		static sql::Connection* con;
 //		sql::Statement* stmt;
 //		sql::Resultset* res;
+		MySQL();
 	public:
-		MySQL(Config*);
+		static void init();
 		static sql::Connection* getCon();
-		~MySQL();
 };
 sql::Driver* MySQL::driver = 0;
 sql::Connection* MySQL::con = 0;

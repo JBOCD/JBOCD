@@ -1,11 +1,11 @@
-Client::Client(Config* conf, struct client_info* conn_conf){
-	this.conf = conf;
+Client::Client(struct client_info* conn_conf){
 	this.conn_conf = conn_conf;
 	inBuffer = (unsigned char*) malloc(WebSocket::MAX_PACKAGE_SIZE);
 	outBuffer = (unsigned char*) malloc(WebSocket::MAX_PACKAGE_SIZE);
 	res_root = res_last = NULL;
 
-
+	Client::prepareStatement();
+	Client::setAccount();
 	Client::doHandshake();
 	pthread_mutex_init(&res_mutex, NULL);
 	pthread_mutex_init(&res_queue_mutex, NULL);
@@ -14,67 +14,105 @@ Client::Client(Config* conf, struct client_info* conn_conf){
 	Client::commandInterpreter();
 }
 void Client::loadServiceDrive(){
-	sql::Statement* stmt;
 	sql::ResultSet* res;
-	int counter=0;
-	char *sqlsmt = (char*)malloc(90);
-	// database get all list
-	strcpy(sqlsmt, "SELECT COUNT(id)   FROM ");
-	stmt = MySQL::getCon()->createStatement();
-	int i=0,j=0;
+	sql::Statement* stmt;
+	
+	unsigned int cdid;
+	unsigned int lid;
+	char* classname;
+	char* tmpStr;
+	char *error;
+	int i=0, j;
+	if(!cloudDrives){
 
-	strcpy(sqlsmt+24, "dropbox");
-	res = stmt->executeQuery(sqlsmt);
-	if(res->next()){
-		i=res->getInt(1);
-		counter+=i;
-		dropboxList = (CDDriver **) malloc(sizeof(CDDriver*) * (i+1));
-		delete res;
-	}
-	strcpy(sqlsmt+24, "googledrive");
-	memcpy(sqlsmt+7, "COUNT(id)  ",11);
-	res = stmt->executeQuery(sqlsmt);
-	if(res->next()){
-		j=res->getInt(1);
-		counter+=i;
-		googleDriveList = (CDDriver **) malloc(sizeof(CDDriver*) * (j+1));
-		delete res;
-	}
-	cloudDrives = (CDDriver **) malloc(sizeof(CDDriver*) * (i+j+1));
+		classname = (char*) MemManager::allocate(256);
+		tmpStr = (char*) MemManager::allocate(512);
+		stmt = MySQL::getCon()->createStatement();
 
-	strcpy(sqlsmt+24, "dropbox");
-	memcpy(sqlsmt+7, "`id`, `key`",11);
-	if(i){
-		i=0;
-		res = stmt->executeQuery("SELECT `id`, `key` FROM dropbox");
-		for(i=0;res->next();i++){
-			cloudDrives[i] = (dropboxList[i] = new Dropbox(res->getString(2)->c_str(), res->getInt(1)));
+		res = get_number_of_library->executeQuery();
+		cd_handler = (struct clouddriver_handler_list*) MemManager::allocate(sizeof(struct clouddriver_handler_list) * (res->getInt("num_of_lib") + 1));
+		memset(cd_handler, 0, sizeof(struct clouddriver_handler_list) * (res->getInt("num_of_lib") + 1));
+		delete res;
+
+		res = get_cloud_drive_list->executeQuery();
+		cloudDrives = (CDDriver **) malloc(sizeof(CDDriver*) * (res->rowsCount() + 2)); // 1 is enough, 2 is safety
+		while(res->next()){
+			strcpy(classname, res->getString("classname")->c_str());
+			cdid = res->getUInt("cdid");
+			lid = res->getUInt("lid");
+			for(j=0;!cd_handler[j]->lid && cd_handler[j]->lid != lid;j++);
+			if(!cd_handler[j]->lid){
+				sprintf(tmpStr, "/usr/local/lib/lib%s.so", classname); // path hardcode now
+				cd_handler[j]->lid = lid;
+				cd_handler[j]->handler = dlopen(tmpStr, RTLD_NOW | RTLD_LOCAL);
+				if(!handle){
+					fprintf(stderr, "Cannot load library. Path: \"%s\", Error: \"%s\"\n", tmpStr, dlerror());
+					cd_handler[j]->lid = 0;
+					continue;
+				}
+				*(void **)(&(cd_handler[j]->newCDDriver))=dlsym(handle,"createObject");
+				if((error=dlerror())!=NULL){
+					fprintf(stderr, "Cannot find function \"CDDriver* createObject(const char*, int)\". Class: \"%s\", Error: \"%s\"\n", classname, error);
+					dlclose(cd_handler[j]->handler);
+					cd_handler[j]->lid = 0;
+					continue;
+				}
+			}
+			delete res;
+			sprintf(tmpStr, "SELECT `id`, `key` FROM `%s` WHERE `id`=%u", classname, cdid);
+			res = stmt->executeQuery(tmpStr);
+			// http://www.linuxjournal.com/article/3687?page=0,0
+			cloudDrives[i] = (*cd_handler[j]->newCDDriver)(res->getString("key"), res->getUInt("id"));
+			i++;
 		}
-		cloudDrives[i] = dropboxList[i] = 0;
+		cloudDrives[i]=NULL;
 		delete res;
+		delete stmt;
+		MemManager::free(classname);
+		MemManager::free(tmpStr);
 	}
-
-	if(j){
-		j=0;
-		strcpy(sqlsmt+24, "googledrive");
-		memcpy(sqlsmt+7, "`id`, `key`",11);
-		res = stmt->executeQuery(sqlsmt);
-		for(j=0;res->next();j++){
-			cloudDrives[i+j] = (googleDriveList[j] = new GoogleDrive(res->getString(2)->c_str(), res->getInt(1)));
-		}
-		cloudDrives[i+j] = googleDriveList[j] = 0;
-		delete res;
-	}
-	// we assume that no extra cloud drive will add into the system
-	// previous COUNT(id) should be equal to now COUNT(id)
-
 }
 
+void Client::prepareStatement(){
+//	used in 0x00, 0x01
+	check_token = MySQL::getCon()->prepareStatement("SELECT * FROM `token` WHERE `token`=? AND `id`=?");
+
+//	used in 0x02, loadServiceDrive
+	get_cloud_drive_list = MySQL::getCon()->prepareStatement("SELECT `a`.`cdid` as `cdid`, `a`.`lid`, `b`.`dir` as `classname` FROM `clouddrive` as `a`, `libraries` as `b` WHERE `a`.`uid`=? AND `a`.`id`=`b`.`lid`");
+	get_number_of_library = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT COUNT(`lid`) FROM `clouddrive` WHERE `uid`=? GROUP BY `lid`),0) as `num_of_lib`");
+
+//	used in 0x03
+	get_logical_drive_list = MySQL::getCon()->prepareStatement("SELECT * FROM `logicaldriveinfo` WHERE `uid`=?");
+
+//	used in 0x04
+	get_list = MySQL::getCon()->prepareStatement("SELECT * FROM `directory` WHERE `ldid`=? AND `parentid`=?");
+
+//	used in 0x04, 0x20, 0x22
+	get_logical_drive = MySQL::getCon()->prepareStatement("SELECT * FROM `logicaldriveinfo` WHERE `uid`=?");
+	get_cloud_drive_by_ldid = MySQL::getCon()->prepareStatement("SELECT * FROM `logicaldrivecontainer` WHERE `ldid`=?");
+
+//	used in 0x21
+	insert_chunk = MySQL::getCon()->prepareStatement("INSERT INTO `filechunk` (`ldid`, `cdid`, `fileid`, `seqnum`, `chunk_name`, `size`) VALUE (?,?,?,?,?,?)");
+
+//	used in 0x22
+	get_file_chunk = MySQL::getCon()->prepareStatement("SELECT * FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
+
+//	used in 0x20, 0x2A
+	get_next_fileid = MySQL::getCon()->prepareStatement("SELECT IFNULL((SELECT MAX(fileid)+1 FROM `directory` WHERE `ldid`=1 GROUP BY ldid), 1) as `fileid`");
+	create_file = MySQL::getCon()->prepareStatement("INSERT INTO `directory` (`ldid`, `parentid`, `fileid`, `name`, `size`) VALUE (?,?,?,?,?)");
+}
+
+void Client::setAccount(){
+	check_user_logical_drive->setInt(2, account_id);
+	get_cloud_drive_list->setInt(1, account_id);
+	get_number_of_library->setInt(1, account_id);
+	get_user_logical_drive->setInt(1, account_id);
+}
 
 void Client::doHandshake(){
 //	if not using websocket, how to confirm message exact size in our protocol?
-	recv(conn_conf->connfd, buffer, WebSocket::MAX_PACKAGE_SIZE, 0);
-	write(conn_conf->connfd, buffer, WebSocket::getHandShakeResponse(buffer, buffer, &err));
+	recv(conn_conf->connfd, inBuffer, WebSocket::MAX_PACKAGE_SIZE, 0);
+	write(conn_conf->connfd, outBuffer, WebSocket::getHandShakeResponse(inBuffer, outBuffer, &err));
 }
 
 void Client::commandInterpreter(){
@@ -108,7 +146,6 @@ void Client::commandInterpreter(){
 	isCont = 0; // if recvLen != readLen, then isCont == true, it mean it continue to read;
 	isCont = isEnd = false;
 
-
 	do{
 		msgNum++;
 
@@ -123,6 +160,7 @@ void Client::commandInterpreter(){
 		if(!isCont)	packageCode = *inBuffer;
 
 		// recv part
+		// should check login then do other step
 		switch(packageCode){
 			case 0x00: // ls acc req
 				Client::processLogin();
@@ -136,7 +174,7 @@ void Client::commandInterpreter(){
 			case 0x04:
 				Client::readList();
 				break;
-/* // this is list cloud drive directory
+			/* // this is list cloud drive directory
 			case 0x04: // ls dir req
 				service = *(inBuffer+1);
 				serviceID = Network::toInt(inBuffer+2);
@@ -154,14 +192,14 @@ void Client::commandInterpreter(){
 					printf("Done.");
 				}
 				break;
-*/
+			*/
 			case 0x20:
 				Client::readCreateFile();
 				// no break;
 			case 0x21:
 				Client::readSaveFile();
 				break;
-/*
+			/*
 			case 0x20: // put req first recv part
 				if(!isCont){
 					tmpFile = FileManager::newTemp();
@@ -210,11 +248,11 @@ void Client::commandInterpreter(){
 				// assume that ben is put all file in a one ws package
 
 				break;
-*/
+			*/
 			case 0x22:
 				Client::readGetFile();
 				break;
-/*
+			/*
 			case 0x22: // get req first send part
 				service = *(inBuffer+1);
 				serviceID = Network::toInt(inBuffer+2);
@@ -235,14 +273,11 @@ void Client::commandInterpreter(){
 				break;
 				case 0x23: // get req continue send part
 					break;
-*/
+			*/
 			case 0x28:
 				Client::readDelFile();
 				break;
-			case 0x2A:
-				Client::readMkdir();
-				break;
-/*
+			/*
 			case 0x28: // delete file opearation
 				service = *(inBuffer+1);
 				serviceID = Network::toInt(inBuffer+2);
@@ -258,9 +293,7 @@ void Client::commandInterpreter(){
 					printf("Done.");
 				}
 				break;
-			case 0x2A: // create dir
-				break;
-*/
+			*/
 			case 0x88: // 10001000
 				Client::addResponseQueue(0x88, NULL);
 				isEnd = true;
@@ -434,126 +467,251 @@ void Client::responseThread(){
 */
 
 /* Read Command */
-// 0x00, 0x01 directly go process, no thread accepted
-// 0x02
-void Client::readGetService(){
-	Thread::create(&Client::processGetService, (void *) *(inBuffer+1)));
-}
-// 0x03
-void Client::readGetDrive(){
-	Thread::create(&Client::processGetDrive, (void *) *(inBuffer+1));
-}
-// 0x04
-void Client::readList(){
+
+// !important, how about login not ok? pointer is not set properly
+
+// 0x00, 0x01 //done
+void Client::readLogin(){
 	struct client_list* info = (struct client_list*) MemManager::allocate(sizeof(struct client_list));
+	char* token = inBuffer+6;
+	token[32]=0;
 	info->operationID = *(inBuffer+1);
-	info->did = Network::toInt(inBuffer+2);
-	info->dirPath = (char*) MemManager::toChars(inBuffer+6);
-	Thread::create(&Client::processList, (void*) info));
+	accountID = Network::toInt(inBuffer+2);
+	check_token->setString(1, token);
+	check_token->setUInt(2, accountID);
+	res = check_token->executeQuery();
+	if(res->rowsCount() == 1){
+		Client::setAccount();
+		Client::addResponseQueue(0x01, info);
+	}else{
+		accountID=0;
+		Client::addResponseQueue(0x00, info);
+	}
+	delete res;
 }
-// 0x20 (first director)
-void Client::readUploadFile(){
-	Client::readCreateFile();
-	Client::readSaveFile();
+// 0x02 //done
+void Client::readGetService(){
+	struct client_clouddrive_root* info = (struct client_clouddrive_root*) MemManager::allocate(sizeof(struct client_clouddrive_root));
+	Client::loadServiceDrive();
+	info->operationID = *(inBuffer+1);
+	info->root = cloudDrives;
+	Client::addResponseQueue(0x02, info);
 }
-// 0x20, 0x2A
+// 0x03 //done
+void Client::readGetDrive(){
+	struct client_logical_drive_root* info = (struct client_logical_drive_root*) MemManager::allocate(sizeof(struct client_logical_drive_root));
+	struct client_logical_drive* ld_last;
+	struct client_clouddrive* cd_last;
+	sql::ResultSet *res;
+	sql::ResultSet *res1;
+	char* tmpstr;
+
+	info->operationID = *(inBuffer+1);
+	info->root = NULL;
+	check_user_logical_drive->setInt(1, logicalDriveID);
+	res = check_user_logical_drive->executeQuery();
+	if(res->rowsCount() == 1){
+		delete res;
+		res = get_logical_drive->executeQuery();
+		while(res->next()){
+			if(info->root){
+				ld_last = ( ld_last->next = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
+			}else{
+				ld_last = ( info->root = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
+			}
+			tmpstr = (char*)MemManager::allocate(strlen(res->getString('name')->c_str()));
+			strcpy(tmpstr, res->getString('name')->c_str());
+
+			ld_last->ldid = res->getUInt('ldid');
+			ld_last->algoid = res->getUInt('algoid');
+			ld_last->name = tmpstr;
+			ld_last->size = res->getUInt64('size');
+			ld_last->root = NULL;
+			ld_last->next = NULL;
+			get_cloud_drive_by_ldid->setUInt(1, ld_last->ldid);
+			res1 = get_cloud_drive_by_ldid->executeQuery();
+			while(res1->next()){
+				if(info->root){
+					cd_last = ( cd_last->next = (struct client_clouddrive*) MemManager::allocate(sizeof(struct client_clouddrive)) );
+				}else{
+					cd_last = ( ld_last->root = (struct client_clouddrive*) MemManager::allocate(sizeof(struct client_clouddrive)) );
+				}
+				cd_last->cdid = res1->getUInt('cdid');
+				cd_last->size = res1->getUInt64('size');
+				cd_last->next = NULL;
+			}
+			delete res1;
+
+		}
+
+	}
+	delete res;
+	Client::addResponseQueue(0x03, info);
+}
+// 0x04 //done
+void Client::readList(){
+	struct client_list_root* info = (struct client_list_root*) MemManager::allocate(sizeof(struct client_list_root));
+	struct client_list* tmp;
+	unsigned int ldid = Network::toInt(inBuffer+2);
+	unsigned long long parentid = Network::toLongLong(inBuffer+6);
+	const char* tmpstr;
+	sql::ResultSet *res;
+	info->operationID = *(inBuffer+1);
+
+	check_user_logical_drive->setUInt(1, ldid);
+	res = check_user_logical_drive->executeQuery();
+	if(res->rowsCount() == 1){
+		delete res;
+		get_list->setUInt(1, ldid);
+		get_list->setUInt64(2, parentid);
+		res = get_list->executeQuery();
+		info->numberOfFile = res->rowsCount();
+		while(res->next()){
+			if(info->root){
+				tmp->next = (struct client_list*) MemManager::allocate(sizeof(struct client_list));
+				tmp = tmp->next;
+			}else{
+				info->root = (tmp = (struct client_list*) MemManager::allocate(sizeof(struct client_list)));
+			}
+			tmp->fid = res->getUInt64('fileid');
+			tmp->fileSize = res->getUInt64('size');
+			tmp->next = NULL;
+
+			tmpstr = res->getString('name')->c_str();
+			tmp->name = (char*) MemManager::allocate(strlen(tmpstr)+1);
+			strcpy(tmp->name, tmpstr);
+		}
+	}
+	delete res;
+
+	Client::addResponseQueue(0x04, (void*)info);
+}
+// 0x20 //done
 void Client::readCreateFile(){
-	unsigned int fid; // ????? 8 bytes?
-	unsigned int pid = Network::toInt(inBuffer+2);
-	unsigned long long fileSize = Network::toLongLong(inBuffer+6);
-	char* name = (char*) Network::toChars(inBuffer+14);
+	struct client_make_file* info = (struct client_make_file*) MemManager::allocate(sizeof(struct client_make_file));
+	unsigned int logicalDriveID = Network::toInt(inBuffer+2);
+	unsigned long long parentID = Network::toLongLong(inBuffer+6);
+	unsigned long long fileSize = Network::toLongLong(inBuffer+14);
+	char* name = (char*) Network::toChars(inBuffer+22);
+	sql::ResultSet *res;
 
-	// database operation
-	fid = 1; // result
+	info->operationID = *(inBuffer+1);
 
-	// update inBuffer
-	Network::toBytes((int) 12+Network::toShort(inBuffer+14),inBuffer+2);
-	Network::toBytes(fid, inBuffer + Network::toInt(inBuffer+2));
+	check_user_logical_drive->setInt(1, logicalDriveID);
+	res = check_user_logical_drive->executeQuery();
+	if(res->rowsCount() == 1){
+		delete res;
+		get_next_fileid->setInt(1, logicalDriveID);
+		res = get_next_fileid->executeQuery();
+		while(res->next()){
+			info->fid=res->getUInt64("fileid");
+			// `ldid`, `parentid`, `fileid`, `name`, `size`
+			create_file->setUInt(1, logicalDriveID);
+			create_file->setUInt64(2, parentID);
+			create_file->setUInt64(3, info->fid);
+			create_file->setString(4, name);
+			create_file->setUInt64(5, fileSize);
+			if(!create_file->executeUpdate()){
+				info->fid = 0;
+			}
+			break;
+		}
+	}
+	delete res;
+	Client::addResponseQueue(0x20, (void*) info));
 }
-// 0x21, 0x20 (remain process)
+// 0x21 //done
 void Client::readSaveFile(){
-	struct client_save_file* info = (struct client_save_file*) MemManager::allocate(sizeof(struct client_save_file));
-	unsigned int* file_id = FileManager::newTemp();
-	int bufShift = 0;
-	int fd;
-	info->operationID = *(inBuffer +1);
-	bufShift = info->operationID == 0x20 ? Network::toInt(bufShift+2) : 2;
 
-	info->fid = Network::toInt(inBuffer + bufShift);
-	info->did = Network::toInt(inBuffer + bufShift + 4);
-	info->sid = Network::toInt(inBuffer + bufShift + 8);
-	info->seqnum = Network::toInt(inBuffer + bufShift + 12);
-	info->remoteName = (char*) MemManager::toChars(inBuffer + bufShift + 16);
-	bufShift = bufShift + 18 + Network::toShort(inBuffer + bufShift + 16);
-	info->chunkSize = Network::toInt(inBuffer + bufShift);
+	struct client_save_file* info = (struct client_save_file*) MemManager::allocate(sizeof(struct client_save_file));
+	unsigned short bufShift = 0;
+	unsigned long long maxSaveSize;
+	int fd;
+	info->isInsertOK = 0;
+	info->operationID = *(inBuffer +1);
+	info->ldid = Network::toInt(inBuffer + 2);
+	info->cdid = Network::toInt(inBuffer + 6);
+	info->fid = Network::toLongLong(inBuffer + 10);
+	info->seqnum = Network::toLongLong(inBuffer + 18);
+	info->remoteName = (char*) Network::toChars(inBuffer + 26);
+	bufShift = 30 + Network::toShort(inBuffer + 26);
+	maxSaveSize = (info->chunkSize = Network::toInt(inBuffer + bufShift - 4));
+
 	info->tmpFile = FileManager::newTemp(info->chunkSize);
 
-	bufShift = bufShift + 4;
 	fd = FileManager::open(info->tmpFile, 'w');
-	do{
+	write(fd, inBuffer + bufShift, readLen - bufShift);
+	maxSaveSize -= readLen - bufShift;
+	// check whether this call will have some security problem
+	while(recvLen && maxSaveSize > 0 && maxSaveSize < info->chunkSize){
+		readLen = WebSocket::getMsg(conn_conf->connfd, inBuffer, WebSocket::MAX_PACKAGE_SIZE > recvLen ? recvLen : WebSocket::MAX_PACKAGE_SIZE, true, &recvLen, maskKey, &err);
+		write(fd, inBuffer, maxSaveSize > readLen ? readLen : maxSaveSize);
+		maxSaveSize -= readLen;
+	}
+	close(fd);
 
-	}while(recvLen != readLen);
+	while(recvLen > 0){
+		WebSocket::getMsg(conn_conf->connfd, inBuffer, WebSocket::MAX_PACKAGE_SIZE > recvLen ? recvLen : WebSocket::MAX_PACKAGE_SIZE, true, &recvLen, maskKey, &err);
+	}
+	isCont = false;
+
+	check_user_logical_drive->setInt(1, logicalDriveID);
+	res = check_user_logical_drive->executeQuery();
+	if(res->rowsCount() == 1){
+		insert_chunk->setUInt(1,info->ldid);
+		insert_chunk->setUInt(2,info->cdid);
+		insert_chunk->setUInt64(3,info->fid);
+		insert_chunk->setUInt64(4,info->seqnum);
+		insert_chunk->setString(5,info->remoteName);
+		insert_chunk->setUInt(6,info->chunkSize);
+		info->isInsertOK = insert_chunk->executeUpdate();
+	}
+	delete res;
 	Thread::create(&Client::processSaveFile, (void*) info));
 }
-// 0x22
+// 0x22 //done
 void Client::readGetFile(){
-	struct response_thread* thread;
-	int numberOfFileChunk=0;
+	struct client_read_file* info;
+	unsigned int logicalDriveID = Network::toInt(inBuffer + 2);
+	unsigned long long fileID = Network::toLongLong(inBuffer + 6);
+	const char* tmpstr;
+	sql::ResultSet *res;
 
-	for(int i=0;i<numberOfFileChunk;i++){
-		thread = MemManager::allocate(sizeof(struct response_thread));
-		pthread_create(&(thread->tid), NULL, &Client::processGetFile, (void*) thread));
+	check_user_logical_drive->setInt(1, logicalDriveID);
+	res = check_user_logical_drive->executeQuery();
+	if(res->rowsCount() == 1){
+		delete res;
+
+		get_file_chunk->setUInt(1, logicalDriveID); // get_file_chunk is undefine
+		get_file_chunk->setUInt64(2, fileID);
+		res = get_file_chunk->executeQuery();
+		while(res->next()){
+			info = (struct client_read_file*) MemManager::allocate(sizeof(struct client_read_file));
+			info->operationID = *(inBuffer + 1);
+			info->ldid = logicalDriveID;
+			info->cdid = res->getInt("cdid");
+			info->fileid = fileID;
+			info->seqnum = res->getInt("seqnum");
+			tmpstr = res->getString("chunk_name")->c_str();
+			info->chunkName = (char*) MemManager::allocate(strlen(tmpstr)+1);
+			strcpy(info->chunkName, tmpstr);
+			info->chunkSize = res->getInt("size");
+			Thread::create(&Client::processGetFile, (void*) info));
+		}
 	}
+	delete res;
 }
-// 0x28
+// 0x28 //done
 void Client::readDelFile(){
-	struct response_thread* thread = MemManager::allocate(sizeof(struct response_thread));
-	unsigned int* file_id = FileManager::newTemp();
+	struct client_del_file* info = (struct client_del_file*) MemManager::allocate(sizeof(struct client_del_file));
+	info->operationID = *(inBuffer+1);
+	info->ldid = Network::toInt(inBuffer + 2);
+	info->fileid = Network::toInt(inBuffer + 6);
 
-	pthread_create(&(thread->tid), NULL, &Client::processDelFile, (void*) thread));
-}
-// 0x2A
-void Client::readMkdir(){
-	Client::readCreateFile();
-
-	Client::addResponseQueue(0x2A, NULL);
+	Thread::create(&Client::processDelFile, (void*) info));
 }
 
 /* Process Command */
-// 0x00, 0x01
-void Client::processLogin(){
-	int* accountID = Network::toInt(inBuffer+1);
-	char* token = inBuffer+5;
-	*(token+32)=0;
-	Client::addResponseQueue(0x00 || 0x01, NULL);
-}
-// 0x02
-void Client::processGetService(void *arg){
-	pthread_t tid = ((struct response_thread*) arg)->tid;
-	MemManager::free(arg);
-
-	Client::addResponseQueue(0x02, NULL);
-	Thread::addDelQueue(tid);
-}
-// 0x03
-void Client::processGetDrive(void *arg){
-	pthread_t tid = ((struct response_thread*) arg)->tid;
-	MemManager::free(arg);
-
-
-	Client::addResponseQueue(0x03, NULL);
-	Thread::addDelQueue(tid);
-}
-// 0x04
-void Client::processList(void *arg){
-	struct response_thread* thread = (struct response_thread*) arg;
-	pthread_t tid = thread->tid;
-
-
-	Client::addResponseQueue(0x04, NULL);
-	MemManager::free(thread);
-	Thread::addDelQueue(tid);
-}
 // 0x20, 0x21
 void Client::processSaveFile(void *arg){
 	struct response_thread* thread = (struct response_thread*) arg;
