@@ -31,6 +31,7 @@ class WebSocket{
 		static int  getMsg(int fd, unsigned char* buf, int size, bool isContinue, long long* payloadLen, unsigned char* maskKey, int* err);	// return buffer size, err return error code
 		static int  sendMsg(unsigned char* buf, unsigned char* msg, long long len);									// return buffer size
 		static int  close(unsigned char* buf);																		// return buffer size
+		static bool willExceed(unsigned long long curLen, unsigned long long addLen)
 };
 
 const char * const WebSocket::WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
@@ -40,7 +41,6 @@ const int WebSocket::ERR_VER_MISMATCH=1;
 const int WebSocket::ERR_NOT_WEBSOCKET=2;
 const int WebSocket::ERR_WRONG_WS_PROTOCOL=4;
 int WebSocket::MAX_PACKAGE_SIZE = 0;
-int WebSocket::MAX_CONTENT_SIZE = 0;
 //static const int WebSocket::ERR_?=4; //next error code 2^n
 
 #include "WebSocket.cpp"

@@ -1,6 +1,5 @@
 void WebSocket::init(){
 	MAX_PACKAGE_SIZE = json_object_get_int(Config::get("socket.maxPackageSize"));
-	MAX_CONTENT_SIZE = json_object_get_int(Config::get("socket.maxContentSize"));
 }
 
 int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err){
@@ -148,4 +147,12 @@ void WebSocket::decode(unsigned char* in, unsigned char* out, unsigned char* mas
 	for(i=0;i<4;i++){
 		maskKey[i]=tmp[i];
 	}
+}
+
+bool WebSocket::willExceed(unsigned long long curLen, unsigned long long addLen){
+	curLen += addLen;
+	if(curLen < 126) curLen += 2;
+	else if(curLen < 65536) curLen += 4;
+	else curLen += 10;
+	return WebSocket::MAX_PACKAGE_SIZE < curLen;
 }

@@ -1,9 +1,8 @@
-GoogleDrive::GoogleDrive(const char* accessToken, int id){
-	int i=0;
-	for(;*(accessToken+i);i++);
-	this->accessToken = (char*) malloc(++i);
-	memcpy(this->accessToken, accessToken, i);
-	tmpStr = (char*) malloc(4096); // 4KB block
+GoogleDrive::GoogleDrive(const char* accessToken, unsigned int id){
+	int len = strlen(accessToken);
+	this->accessToken = (char*) malloc(len+1);
+	strcpy(this->accessToken, accessToken);
+	tmpStr = (char*) malloc(1024+len);
 	this->id = id;
 }
 int GoogleDrive::get(char* remotefilePath, char* localfilePath){
@@ -41,8 +40,11 @@ int GoogleDrive::del(char* remotefilePath){
 	);
 	return system(tmpStr);
 }
-bool GoogleDrive::isID(int id){
+bool GoogleDrive::isID(unsigned int id){
 	return this->id == id;
+}
+unsigned int GoogleDrive::getID(){
+	return this->id;
 }
 
 GoogleDrive::~GoogleDrive(){
@@ -50,8 +52,12 @@ GoogleDrive::~GoogleDrive(){
 		free(tmpStr);
 		tmpStr = 0;
 	}
+	if(accessToken){
+		free(accessToken);
+		accessToken = 0;
+	}
 }
 
-CDDriver* createObject(const char* accessToken, int id){
+CDDriver* createObject(const char* accessToken, unsigned int id){
 	return new GoogleDrive(accessToken, id);
 }

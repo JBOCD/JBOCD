@@ -1,9 +1,8 @@
-Dropbox::Dropbox(const char* accessToken, int id){
-	int i=0;
-	for(;*(accessToken+i);i++);
-	this->accessToken = (char*) malloc(++i);
-	memcpy(this->accessToken, accessToken, i);
-	tmpStr = (char*) malloc(1024); // 512B block
+Dropbox::Dropbox(const char* accessToken, unsigned int id){
+	int len = strlen(accessToken);
+	this->accessToken = (char*) malloc(len+1);
+	strcpy(this->accessToken, accessToken);
+	tmpStr = (char*) malloc(1024+len);
 	this->id = id;
 }
 int Dropbox::get(char* remotefilePath, char* localfilePath){
@@ -41,8 +40,11 @@ int Dropbox::del(char* remotefilePath){
 	);
 	return system(tmpStr);
 }
-bool Dropbox::isID(int id){
+bool Dropbox::isID(unsigned int id){
 	return this->id == id;
+}
+unsigned int Dropbox::getID(){
+	return this->id;
 }
 
 Dropbox::~Dropbox(){
@@ -50,8 +52,12 @@ Dropbox::~Dropbox(){
 		free(tmpStr);
 		tmpStr = 0;
 	}
+	if(accessToken){
+		free(accessToken);
+		accessToken = 0;
+	}
 }
 
-CDDriver* createObject(const char* accessToken, int id){
+CDDriver* createObject(const char* accessToken, unsigned int id){
 	return new Dropbox(accessToken, id);
 }

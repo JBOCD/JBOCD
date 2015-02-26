@@ -24,7 +24,7 @@ case 0x02 00000010: client get Service
 
 case 0x02 00000010: server get Service
 	1 byte int: Operation ID
-	2 byte int: number of Service
+	2/0 byte int: number of Service ( first packet ) / null ( other packet )
 	(
 		4 byte int: service UID
 //		8 byte int: Available Size // record not found
@@ -37,18 +37,18 @@ case 0x03 00000011: client get Drive
 
 case 0x03 00000011: server get Drive
 	1 byte int: Operation ID
-	2 byte int: number of Drive
+	2/0 byte int: number of Drive ( first packet ) / null ( other packet )
 	(
 		4 byte int: Drive ID
 		4 byte int: Algorithm ID
 		8 Byte int: Total Size
+		2 byte int: Drive name length "n"
+		n byte char: Drive name
 		2 byte int: number of Service
 		(
 			4 byte int: Service UID
 			8 byte int: Allocate Size
 		)+
-		2 byte int: Drive name length "n"
-		n byte char: Drive name
 	)*
 
 case 0x04 00000100: client ls dir/file
@@ -58,7 +58,7 @@ case 0x04 00000100: client ls dir/file
 
 case 0x04 00000100: server ls dir/file
 	1 byte int: Operation ID
-	2 byte int: number of files
+	2/0 byte int: number of files ( first packet ) / null ( other packet )
 	(
 		8 byte int: File ID
 		8 byte int: File size
@@ -94,7 +94,7 @@ case 0x21 00100001: client put
 	4 byte int: Drive ID
 	4 byte int: Service UID
 	8 byte int: File ID
-	8 byte int: File chunk sequence number
+	4 byte int: File chunk sequence number
 	2 byte int: Remote File name length "m"
 	m byte char: Remote File name
 	4 byte int: send file chunk length "k"
@@ -102,7 +102,7 @@ case 0x21 00100001: client put
 
 case 0x21 00100001: server put
 	1 byte int: Operation ID
-	8 byte int: File chunk sequence number
+	4 byte int: File chunk sequence number
 	1 byte int: status ( 0 is file created, other are error code)
 	4 byte int: recv len (if status is 0, then it exist 4byte file len, otherwise, 0byte)
 
@@ -111,17 +111,14 @@ case 0x22 00100010: client get
 	4 byte int: Drive ID
 	8 byte int: File ID
 
-case 0x22 00100010: server get (chunk first time download only)
+case 0x22 00100010: server get (info)
 	1 byte int: Operation ID
-	8 byte int: File chunk sequence number
-	4 byte int: send chunk length
-	4 byte int: send current packet payload len "n" (Range: 0 - payload len)
-	n byte: (part of) chunk payload
+	8 byte int: Total number of chunk
 
-case 0x23 00100011: server get (chunk continue download)
+case 0x23 00100011: server get (chunk)
 	1 byte int: Operation ID
 	8 byte int: File chunk sequence number
-	4 byte int: send chunk start byte position
+	4 byte int: send chunk length (first chunk) / send chunk start byte position (continuous chunk)
 	4 byte int: send current packet payload len "n" (Range: 0 - payload len)
 	n byte: part of chunk payload
 

@@ -3,20 +3,21 @@
 
 #include "CDDriver.h"
 
-extern "C" CDDriver* createObject(const char*, int);
+extern "C" CDDriver* createObject(const char*, unsigned int);
 class GoogleDrive: public CDDriver{
 	protected:
 		char* tmpStr;
 		char* accessToken;
-		int id;
+		unsigned int id;
 	public:
 		~GoogleDrive();
-		GoogleDrive(const char* accessToken, int id);
+		GoogleDrive(const char* accessToken, unsigned int id);
 		int get(char* remotefilePath, char* localfilePath);
 		int put(char* remotefilePath, char* localfilePath);
 		int ls (char* remotefilePath, char* localfilePath);
 		int del(char* remotefilePath);
-		bool isID(int id);
+		bool isID(unsigned int id);
+		unsigned int getID();
 };
 
 

@@ -17,17 +17,23 @@ unsigned char* Network::toChars(unsigned char* in){
 	out[len]=0;
 	return out;
 }
-void Network::toBytes(short value, unsigned char* ptr){
+void Network::toBytes(unsigned short value, unsigned char* ptr){
 	ptr[1] = (unsigned char) ( (value       ) & 0xFF);
 	ptr[0] = (unsigned char) ( (value >>  8 ) & 0xFF);
 }
-void Network::toBytes(int value, unsigned char* ptr){
+void Network::toBytes(short value, unsigned char* ptr){
+	Network::toBytes((unsigned short) value, ptr);
+}
+void Network::toBytes(unsigned int value, unsigned char* ptr){
 	ptr[3] = (unsigned char) ( (value       ) & 0xFF);
 	ptr[2] = (unsigned char) ( (value >>  8 ) & 0xFF);
 	ptr[1] = (unsigned char) ( (value >> 16 ) & 0xFF);
 	ptr[0] = (unsigned char) ( (value >> 24 ) & 0xFF);
 }
-void Network::toBytes(long long value, unsigned char* ptr){
+void Network::toBytes(int value, unsigned char* ptr){
+	Network::toBytes((unsigned int) value, ptr);
+}
+void Network::toBytes(unsigned long long value, unsigned char* ptr){
 	ptr[7] = (unsigned char) ( (value       ) & 0xFF);
 	ptr[6] = (unsigned char) ( (value >>  8 ) & 0xFF);
 	ptr[5] = (unsigned char) ( (value >> 16 ) & 0xFF);
@@ -37,9 +43,15 @@ void Network::toBytes(long long value, unsigned char* ptr){
 	ptr[1] = (unsigned char) ( (value >> 48 ) & 0xFF);
 	ptr[0] = (unsigned char) ( (value >> 56 ) & 0xFF);
 }
-void Network::toBytes(char* value, unsigned char* ptr){
+void Network::toBytes(long long value, unsigned char* ptr){
+	Network::toBytes((unsigned long long) value, ptr);
+}
+void Network::toBytes(unsigned char* value, unsigned char* ptr){
 	strcpy(ptr+2, value);
 	Network::toBytes(strlen(value), ptr);
+}
+void Network::toBytes(char* value, unsigned char* ptr){
+	Network::toBytes((unsigned char*) value, ptr);
 }
 int Network::getLength(short value, int len){
 	return len + 2;
