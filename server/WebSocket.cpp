@@ -1,5 +1,8 @@
 void WebSocket::init(){
 	MAX_PACKAGE_SIZE = json_object_get_int(Config::get("socket.maxPackageSize"));
+	if(MAX_PACKAGE_SIZE < 1024){ // no less than 1KB
+		MAX_PACKAGE_SIZE = 1024;
+	}
 }
 
 int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err){
@@ -126,8 +129,21 @@ int WebSocket::close(unsigned char* buf){
 
 void WebSocket::decode(unsigned char* in, unsigned char* out, unsigned char* maskKey, int len){
 	unsigned char tmp[4];
+// Large fast decode is in comment
+// only for 64bit CPU
+// ps: not firm
+/*
+	unsigned long long* inLL = (unsigned long long*) in;
+	unsigned long long* outLL = (unsigned long long*) out;
+	unsigned long long maskKeyLL;
+	memcpy( ((void*) &maskKeyLL)    , maskKey, 4);
+	memcpy( ((void*) &maskKeyLL) + 4, maskKey, 4);
+*/
+//	int i=0, j=len/8;
 	int i=0, j=len/4;
+//	for(;i<j;i++,inLL++,outLL++){
 	for(;i<j;i++){
+//		*outLL = *inLL ^ maskKeyLL;
 		out[0] = in[0] ^ maskKey[0];
 		out[1] = in[1] ^ maskKey[1];
 		out[2] = in[2] ^ maskKey[2];
@@ -135,7 +151,20 @@ void WebSocket::decode(unsigned char* in, unsigned char* out, unsigned char* mas
 
 		out+=4;	in+=4;
 	}
+//	j=len%8;
+//	out = (unsigned char*) outLL;
+//	in = (unsigned char*) inLL;
+//	if(j > 4){
+//		out[0] = in[0] ^ maskKey[0];
+//		out[1] = in[1] ^ maskKey[1];
+//		out[2] = in[2] ^ maskKey[2];
+//		out[3] = in[3] ^ maskKey[3];
+//
+//		out+=4;	in+=4;
+//		j-=4;
+//	}
 	j=len%4;
+//	for(i=0;i<8;i++){
 	for(i=0;i<4;i++){
 		if(i<j){
 			tmp[i+(4-j)] = maskKey[i];
@@ -155,4 +184,10 @@ bool WebSocket::willExceed(unsigned long long curLen, unsigned long long addLen)
 	else if(curLen < 65536) curLen += 4;
 	else curLen += 10;
 	return WebSocket::MAX_PACKAGE_SIZE < curLen;
+}
+unsigned long long WebSocket::getRemainBufferSize(unsigned long long curLen){
+	if(curLen < 126) curLen += 2;
+	else if(curLen < 65536) curLen += 4;
+	else curLen += 10;
+	return WebSocket::MAX_PACKAGE_SIZE - curLen;
 }

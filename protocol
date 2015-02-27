@@ -66,15 +66,6 @@ case 0x04 00000100: server ls dir/file
 		n byte char: File name
 	)*
 
-case 0x05 00000101: server ls dir/file
-	1 byte int: Operation ID
-	(
-			8 byte int: File ID
-			8 byte int: File size
-			2 byte int: File name length "n"
-			n byte char: File name
-	)*
-
 // file opearation, 0x20 should exist
 
 case 0x20 00100000: client new directory / file
@@ -113,11 +104,11 @@ case 0x22 00100010: client get
 
 case 0x22 00100010: server get (info)
 	1 byte int: Operation ID
-	8 byte int: Total number of chunk
+	4 byte int: Total number of chunk
 
 case 0x23 00100011: server get (chunk)
 	1 byte int: Operation ID
-	8 byte int: File chunk sequence number
+	4 byte int: File chunk sequence number
 	4 byte int: send chunk length (first chunk) / send chunk start byte position (continuous chunk)
 	4 byte int: send current packet payload len "n" (Range: 0 - payload len)
 	n byte: part of chunk payload
@@ -130,7 +121,8 @@ case 0x28 00101000: client delete
 
 case 0x28 00101000: server delete
 	1 byte int: Operation ID
-	1 byte int: status ( 0 is file delete, other are error code)
+	2 byte int: file name "n"
+	n byte char: file name
 
 // close code,
 case 0x88 10001000: server close connection (server only)

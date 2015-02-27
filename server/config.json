@@ -32,7 +32,7 @@
 		//			 2 Bytes (for size between 0 and 125 )
 		//			 4 Bytes (for size between 126 and 65535 )
 		//			10 Bytes (for size between 65536 and 2^64-1 )
-		"maxPackageSize": 8960
+		"maxPackageSize": 5244320
 	},
 	"file":{
 		"temp":{

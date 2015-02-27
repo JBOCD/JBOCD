@@ -31,7 +31,8 @@ class WebSocket{
 		static int  getMsg(int fd, unsigned char* buf, int size, bool isContinue, long long* payloadLen, unsigned char* maskKey, int* err);	// return buffer size, err return error code
 		static int  sendMsg(unsigned char* buf, unsigned char* msg, long long len);									// return buffer size
 		static int  close(unsigned char* buf);																		// return buffer size
-		static bool willExceed(unsigned long long curLen, unsigned long long addLen)
+		static bool willExceed(unsigned long long curLen, unsigned long long addLen);
+		static unsigned long long getRemainBufferSize(unsigned long long curLen);
 };
 
 const char * const WebSocket::WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";

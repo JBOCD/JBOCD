@@ -43,6 +43,7 @@ struct client_response{
 // 0x02
 struct client_clouddrive_root{
 	unsigned char operationID;
+	unsigned short numOfCloudDrives=0;
 	CDDriver ** root;
 };
 
@@ -50,6 +51,7 @@ struct client_clouddrive_root{
 struct client_clouddrive{
 	unsigned int cdid;
 	unsigned long long size;
+	char* dir;
 	struct client_clouddrive * next;
 };
 struct client_logical_drive{
@@ -102,8 +104,9 @@ struct client_save_file{
 // 0x22
 struct client_read_file_info{
 	unsigned char operationID;
-	unsigned int num_of_seq;
+	unsigned int num_of_chunk;
 };
+// 0x23
 struct client_read_file{
 	unsigned char operationID;
 	unsigned int ldid;
@@ -111,6 +114,7 @@ struct client_read_file{
 	unsigned long long fileid;
 	unsigned int seqnum;
 	unsigned char* chunkName;
+	unsigned int* tmpFile;
 	unsigned int chunkSize;
 };
 
@@ -119,6 +123,7 @@ struct client_del_file{
 	unsigned char operationID;
 	unsigned int ldid;
 	unsigned long long fileid;
+	char* name;
 };
 
 class Client{
@@ -128,20 +133,22 @@ class Client{
 
 // Client Info
 		unsigned int account_id=0;
+// Cloud Drive Info
+		struct client_clouddrive_root* cd_root;
 
-// Cloud Drive API
-		unsigned short numOfCloudDrives=0;
-		CDDriver ** cloudDrives; // new
-//		CDDriver ** dropboxList; // deprecated
-//		CDDriver ** googleDriveList; // deprecated
+// Logical Drive Info
+		struct client_logical_drive_root* ld_root;
+
+// Client End
+		pthread_mutex_t client_end_mutex;
 
 // CloudDriver handler list
 		struct clouddriver_handler_list* cd_handler;
+
 // WebSocket
 		CDDriver ** tmpCDD;
 		int err;
 		bool isCont;
-		bool isEnd;
 		unsigned char maskKey[4];
 		unsigned char* inBuffer;
 		unsigned char* outBuffer;
@@ -159,13 +166,14 @@ class Client{
 		sql::PreparedStatement* check_token;
 		sql::PreparedStatement* get_cloud_drive_list;
 		sql::PreparedStatement* get_number_of_library;
-		sql::PreparedStatement* get_logical_drive;
-		sql::PreparedStatement* get_cloud_drive_by_ldid;
 		sql::PreparedStatement* get_list;
 		sql::PreparedStatement* get_next_fileid;
 		sql::PreparedStatement* create_file;
 		sql::PreparedStatement* insert_chunk;
 		sql::PreparedStatement* get_file_chunk;
+		sql::PreparedStatement* get_child;
+		sql::PreparedStatement* get_file;
+		sql::PreparedStatement* del_file;
 // function
 		void load_CDDriver();
 		void doHandshake();
