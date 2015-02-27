@@ -1,3 +1,4 @@
+#include "Dropbox.h"
 Dropbox::Dropbox(const char* accessToken, unsigned int id){
 	int len = strlen(accessToken);
 	this->accessToken = (char*) malloc(len+1);

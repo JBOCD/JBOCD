@@ -1,6 +1,6 @@
-#ifndef DROPBOX_H
-#define DROPBOX_H
-
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include "CDDriver.h"
 
 extern "C" CDDriver* createObject(const char*, unsigned int);
@@ -19,8 +19,3 @@ class Dropbox: public CDDriver{
 		bool isID(unsigned int id);
 		unsigned int getID();
 };
-
-
-#include "Dropbox.cpp"
-
-#endif
