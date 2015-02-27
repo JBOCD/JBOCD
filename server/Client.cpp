@@ -100,11 +100,11 @@ void Client::loadLogicalDrive(){
 			ld_last = ( ld_root->root = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
 		}
 
-		ld_last->ldid = res->getUInt('ldid');
-		ld_last->algoid = res->getUInt('algoid');
-		ld_last->name = (char*)MemManager::allocate(strlen(res->getString('name')->c_str())+1);
-		strcpy(tmpstr, res->getString('name')->c_str());
-		ld_last->size = res->getUInt64('size');
+		ld_last->ldid = res->getUInt("ldid");
+		ld_last->algoid = res->getUInt("algoid");
+		ld_last->name = (char*)MemManager::allocate(strlen(res->getString("name")->c_str())+1);
+		strcpy(tmpstr, res->getString("name")->c_str());
+		ld_last->size = res->getUInt64("size");
 		ld_last->root = NULL;
 		ld_last->next = NULL;
 
@@ -118,10 +118,10 @@ void Client::loadLogicalDrive(){
 			}else{
 				cd_last = ( ld_last->root = (struct client_clouddrive*) MemManager::allocate(sizeof(struct client_clouddrive)) );
 			}
-			cd_last->cdid = res1->getUInt('cdid');
-			cd_last->size = res1->getUInt64('size');
-			cd_last->dir = (char*)MemManager::allocate(strlen(res1->getString('cddir')->c_str())+1);
-			strcpy(cd_last->dir, res1->getString('cddir')->c_str());
+			cd_last->cdid = res1->getUInt("cdid");
+			cd_last->size = res1->getUInt64("size");
+			cd_last->dir = (char*)MemManager::allocate(strlen(res1->getString("cddir")->c_str())+1);
+			strcpy(cd_last->dir, res1->getString("cddir")->c_str());
 			cd_last->next = NULL;
 		}
 		delete res1;
@@ -351,12 +351,12 @@ void Client::readList(){
 			}else{
 				info->root = ( tmp = (struct client_list*) MemManager::allocate(sizeof(struct client_list)) );
 			}
-			tmp->fileid = res->getUInt64('fileid');
-			tmp->fileSize = res->getUInt64('size');
+			tmp->fileid = res->getUInt64("fileid");
+			tmp->fileSize = res->getUInt64("size");
 			tmp->next = NULL;
 
-			tmp->name = (char*) MemManager::allocate(strlen(res->getString('name')->c_str())+1);
-			strcpy(tmp->name, res->getString('name')->c_str());
+			tmp->name = (char*) MemManager::allocate(strlen(res->getString("name")->c_str())+1);
+			strcpy(tmp->name, res->getString("name")->c_str());
 		}
 	}
 	delete res;

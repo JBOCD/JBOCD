@@ -1,6 +1,5 @@
 void MemManager::init(){
 	free_list.next = NULL;
-	mutex = PTHREAD_MUTEX_INITIALIZER;
 	maxAllocate = (unsigned int)json_object_get_int(Config::get("memory.maxAllocate"));
 }
 
@@ -8,9 +7,9 @@ void* MemManager::allocate(unsigned int size){
 	MemManager::allocate(unsigned int size, false);
 }
 void* MemManager::allocate(unsigned int size, bool isExactSize){
-	struct mem_header* result, tmpPre = &free_list, tmpCur;
+	struct mem_header* result, *tmpPre = &free_list, *tmpCur;
 	pthread_mutex_lock(&mutex);
-	tmpCur = free_list.next
+	tmpCur = free_list->next;
 	while(tmpCur){
 		if(tmpCur->size == size || (tmpCur->size > size && !isExactSize)){
 			result = tmpCur;

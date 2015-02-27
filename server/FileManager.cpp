@@ -68,12 +68,12 @@ void FileManager::freeTemp(){
 }
 
 int FileManager::open(unsigned int* file, char mode){
+	struct file_store* tmp = (struct file_store*) (((void*)file)-sizeof(struct file_store*)+sizeof(unsigned int));
 	char* tmpStr = (char*) MemManager::allocate(512);
-	int fd;
 	FileManager::getTempPath(file, tmpStr);
-	fd = open(tmpStr, mode == 'r' ? O_RDONLY : O_WRONLY | O_CREAT | O_TRUNC);
+	tmp->fd = open(tmpStr, mode == 'r' ? O_RDONLY : O_WRONLY | O_CREAT | O_TRUNC);
 	MemManager::free(tmpStr);
-	return fd;
+	return tmp->fd;
 }
 
 void FileManager::getTempPath(unsigned int* file, char* buf){

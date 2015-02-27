@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <pthread.h>
 #include <json/json.h>
 
 #ifndef MEM_MANAGEMER_H
@@ -26,6 +27,8 @@ class MemManager{
 		static void* allocate(unsigned int size);
 		static void free(void* mem);
 };
+
+pthread_mutex_t MemManager::mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #include "MemManager.cpp"
 
