@@ -4,12 +4,12 @@ void MemManager::init(){
 }
 
 void* MemManager::allocate(unsigned int size){
-	MemManager::allocate(unsigned int size, false);
+	return MemManager::allocate(unsigned int size, false);
 }
 void* MemManager::allocate(unsigned int size, bool isExactSize){
 	struct mem_header* result, *tmpPre = &free_list, *tmpCur;
 	pthread_mutex_lock(&mutex);
-	tmpCur = free_list->next;
+	tmpCur = free_list.next;
 	while(tmpCur){
 		if(tmpCur->size == size || (tmpCur->size > size && !isExactSize)){
 			result = tmpCur;
@@ -32,7 +32,7 @@ void* MemManager::allocate(unsigned int size, bool isExactSize){
 		if(sizeof(struct mem_header) + size > maxAllocate - allocateSize){
 			MemManager::flush(sizeof(struct mem_header) + size - allocateSize);
 		}
-		if(result = malloc(sizeof(struct mem_header) + size)){
+		if(result = (struct mem_header*) malloc(sizeof(struct mem_header) + size)){
 			allocateSize+= size;
 			result->size = size;
 		}
@@ -42,7 +42,7 @@ void* MemManager::allocate(unsigned int size, bool isExactSize){
 
 void MemManager::free(void* mem){
 	struct mem_header* free_mem = ((struct mem_header*) mem)-1;
-	struct mem_header* tmpPre = &free_list, tmpCur;
+	struct mem_header* tmpPre = &free_list, *tmpCur;
 	pthread_mutex_lock(&mutex);
 	tmpCur = free_list.next;
 	while(tmpCur){
@@ -69,7 +69,7 @@ void MemManager::flush(unsigned int targetSize){
 	struct mem_header* tmpCur;
 	pthread_mutex_lock(&mutex);
 	tmpCur = free_list.next;
-	allocateSize
+	
 	while(tmpCur && targetSize > 0){
 		if(tmpCur->other){
 			free_list.next = tmpCur->other;
@@ -77,6 +77,7 @@ void MemManager::flush(unsigned int targetSize){
 		}else{
 			free_list.next = tmpCur->next;
 		}
+		allocateSize -= tmpCur->size;
 		targetSize -= tmpCur->size;
 		free(tmpCur);
 		tmpCur = free_list.next;
