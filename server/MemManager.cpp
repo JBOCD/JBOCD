@@ -1,5 +1,6 @@
 void MemManager::init(){
-	free_list.next = NULL;
+	free_list->size = 0;
+	free_list->next = NULL;
 	maxAllocate = (unsigned int)json_object_get_int(Config::get("memory.maxAllocate"));
 }
 
@@ -7,9 +8,9 @@ void* MemManager::allocate(unsigned int size){
 	return MemManager::allocate(size, false);
 }
 void* MemManager::allocate(unsigned int size, bool isExactSize){
-	struct mem_header* result, *tmpPre = &free_list, *tmpCur;
+	struct mem_header* result, *tmpPre = &free_list-> *tmpCur;
 	pthread_mutex_lock(&mutex);
-	tmpCur = free_list.next;
+	tmpCur = free_list->next;
 	while(tmpCur){
 		if(tmpCur->size == size || (tmpCur->size > size && !isExactSize)){
 			result = tmpCur;
@@ -42,9 +43,9 @@ void* MemManager::allocate(unsigned int size, bool isExactSize){
 
 void MemManager::free(void* mem){
 	struct mem_header* free_mem = ((struct mem_header*) mem)-1;
-	struct mem_header* tmpPre = &free_list, *tmpCur;
+	struct mem_header* tmpPre = &free_list-> *tmpCur;
 	pthread_mutex_lock(&mutex);
-	tmpCur = free_list.next;
+	tmpCur = free_list->next;
 	while(tmpCur){
 		if(tmpCur->size > free_mem->size){
 			free_mem->next = tmpCur;
@@ -68,19 +69,19 @@ void MemManager::free(void* mem){
 void MemManager::flush(unsigned int targetSize){
 	struct mem_header* tmpCur;
 	pthread_mutex_lock(&mutex);
-	tmpCur = free_list.next;
+	tmpCur = free_list->next;
 	
 	while(tmpCur && targetSize > 0){
 		if(tmpCur->other){
-			free_list.next = tmpCur->other;
+			free_list->next = tmpCur->other;
 			tmpCur->other->next = tmpCur->next;
 		}else{
-			free_list.next = tmpCur->next;
+			free_list->next = tmpCur->next;
 		}
 		allocateSize -= tmpCur->size;
 		targetSize -= tmpCur->size;
 		free(tmpCur);
-		tmpCur = free_list.next;
+		tmpCur = free_list->next;
 	}
 	pthread_mutex_unlock(&mutex);
 }

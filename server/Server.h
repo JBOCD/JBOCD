@@ -29,6 +29,9 @@ class Server{
 		static void _server_close(int signum);
 };
 
+int Server::conn_count = 0;
+int Server::max_conn = 0;
+
 #include "Server.cpp"
 
 #endif

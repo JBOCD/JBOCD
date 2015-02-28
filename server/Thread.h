@@ -41,10 +41,18 @@ class Thread{
 
 struct thread_queue* Thread::delRoot = NULL;
 struct thread_info* Thread::createRoot = NULL;
+
+struct thread_info* Thread::createRootLast = NULL;
+pthread_t Thread::create_thread_tid = 0;
+
 pthread_mutex_t Thread::del_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t Thread::new_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t Thread::new_thread_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t Thread::counter_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+int Thread::maxThread = 0;
+int Thread::curThread = 0;
+
 
 #include "Thread.cpp"
 
