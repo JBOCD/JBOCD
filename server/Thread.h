@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include <unistd.h>
 
 #ifndef THREAD_H
 #define THREAD_H
@@ -18,8 +19,8 @@ struct thread_info{
 class Thread{
 	private:
 		static struct thread_queue* delRoot;
-		static struct thread_queue* createRoot;
-		static struct thread_queue* createRootLast;
+		static struct thread_info* createRoot;
+		static struct thread_info* createRootLast;
 		static pthread_t create_thread_tid;
 		static pthread_mutex_t del_queue_mutex;
 		static pthread_mutex_t new_thread_mutex;
@@ -29,7 +30,7 @@ class Thread{
 		static int curThread;
 
 		static void addDelQueue(pthread_t t);
-		static void createThreadFromQueue();
+		static void* createThreadFromQueue(void* arg);
 		static void newThreadInit(void* info);
 		static void clearThread(); // only main thread can use this function
 		Thread();

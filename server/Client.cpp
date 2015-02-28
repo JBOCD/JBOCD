@@ -1,8 +1,9 @@
 Client::Client(struct client_info* conn_conf){
-	this.conn_conf = conn_conf;
+	this->conn_conf = conn_conf;
 	inBuffer = (unsigned char*) malloc(WebSocket::MAX_PACKAGE_SIZE);
 	outBuffer = (unsigned char*) malloc(WebSocket::MAX_PACKAGE_SIZE);
 	res_root = res_last = NULL;
+	account_id = 0;
 
 	Client::prepareStatement();
 	Client::updatePrepareStatementAccount();
@@ -755,7 +756,7 @@ void Client::sendCreateFile(void* a){
 	MemManager::free(info);
 }
 // 0x21
-void Client::sendSaveFile(void* a)){
+void Client::sendSaveFile(void* a){
 	struct client_save_file* info = (struct client_save_file*) a;
 	*outBuffer = 0x21;
 	*(outBuffer+1) = info->operationID;
@@ -770,7 +771,7 @@ void Client::sendSaveFile(void* a)){
 	MemManager::free(info);
 }
 // 0x22
-void Client::sendGetFileInfo(void* a)){
+void Client::sendGetFileInfo(void* a){
 	struct client_read_file_info* info = (struct client_read_file_info*) a;
 	*outBuffer = 0x22;
 	*(outBuffer+1) = info->operationID;
@@ -780,7 +781,7 @@ void Client::sendGetFileInfo(void* a)){
 	MemManager::free(info);
 }
 // 0x23
-void Client::sendGetFileChunk(void* a)){
+void Client::sendGetFileChunk(void* a){
 	struct client_read_file* info = (struct client_read_file*) a;
 	unsigned long long maxRead = WebSocket::getRemainBufferSize(14);
 	unsigned long long readBytes;
@@ -811,7 +812,7 @@ void Client::sendGetFileChunk(void* a)){
 	MemManager::free(info);
 }
 // 0x24
-void Client::sendDelFile(void* a)){
+void Client::sendDelFile(void* a){
 	struct client_read_file_info* info = (struct client_read_file_info*) a;
 	*outBuffer = 0x28;
 	*(outBuffer+1) = info->operationID;

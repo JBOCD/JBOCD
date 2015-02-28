@@ -4,7 +4,7 @@ void MemManager::init(){
 }
 
 void* MemManager::allocate(unsigned int size){
-	return MemManager::allocate(unsigned int size, false);
+	return MemManager::allocate(size, false);
 }
 void* MemManager::allocate(unsigned int size, bool isExactSize){
 	struct mem_header* result, *tmpPre = &free_list, *tmpCur;

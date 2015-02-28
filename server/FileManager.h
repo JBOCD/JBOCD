@@ -1,3 +1,5 @@
+#include <fcntl.h>
+#include <unistd.h>
 #include <json/json.h>
 #include <pthread.h>
 
@@ -31,6 +33,8 @@ class FileManager{
 		FileManager(){}
 	public:
 		static void init();
+		static void newProcess();
+		static void endProcess();
 		static unsigned int* newTemp();
 		static void deleteTemp(unsigned int* file_store);
 		static void freeTemp();

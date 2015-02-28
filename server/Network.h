@@ -21,7 +21,6 @@ class Network{
 		static void toBytes(int value, unsigned char* ptr);
 		static void toBytes(unsigned long long value, unsigned char* ptr);
 		static void toBytes(long long value, unsigned char* ptr);
-		static void toBytes(unsigned char* value, unsigned char* ptr);
 		static void toBytes(char* value, unsigned char* ptr);
 		static int getLength(short value, int len);
 		static int getLength(int value, int len);

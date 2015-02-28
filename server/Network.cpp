@@ -46,12 +46,9 @@ void Network::toBytes(unsigned long long value, unsigned char* ptr){
 void Network::toBytes(long long value, unsigned char* ptr){
 	Network::toBytes((unsigned long long) value, ptr);
 }
-void Network::toBytes(unsigned char* value, unsigned char* ptr){
-	strcpy(ptr+2, value);
-	Network::toBytes(strlen(value), ptr);
-}
 void Network::toBytes(char* value, unsigned char* ptr){
-	Network::toBytes((unsigned char*) value, ptr);
+	strcpy(ptr+2, value);
+	Network::toBytes((unsigned short) strlen(value), ptr);
 }
 int Network::getLength(short value, int len){
 	return len + 2;

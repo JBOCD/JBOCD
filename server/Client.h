@@ -43,7 +43,7 @@ struct client_response{
 // 0x02
 struct client_clouddrive_root{
 	unsigned char operationID;
-	unsigned short numOfCloudDrives=0;
+	unsigned short numOfCloudDrives;
 	CDDriver ** root;
 };
 
@@ -132,7 +132,7 @@ class Client{
 		pthread_t responseThread;
 
 // Client Info
-		unsigned int account_id=0;
+		unsigned int account_id;
 // Cloud Drive Info
 		struct client_clouddrive_root* cd_root;
 
@@ -175,9 +175,39 @@ class Client{
 		sql::PreparedStatement* get_file;
 		sql::PreparedStatement* del_file;
 // function
-		void load_CDDriver();
+		void loadCloudDrive();
+		void loadLogicalDrive();
+
+		void prepareStatement();
+		void updatePrepareStatementAccount();
 		void doHandshake();
+
 		void commandInterpreter();
+
+		void addResponseQueue(unsigned char command, void* info);
+		void responseThread();
+
+		void readLogin();
+		void readGetService();
+		void readGetDrive();
+		void readList();
+		void readCreateFile();
+		void readSaveFile();
+		void readGetFile();
+		void readDelFile();
+
+		void processSaveFile(void *arg);
+		void processGetFileChunk(void *arg);
+		void processDelFile(void *arg);
+
+		void sendLogin(unsigned char command, void* a);
+		void sendGetCloudDrive();
+		void sendGetLogicalDrive();
+		void sendCreateFile(void* a);
+		void sendSaveFile(void* a);
+		void sendGetFileInfo(void* a);
+		void sendGetFileChunk(void* a);
+		void sendDelFile(void* a);
 	public:
 		Client(struct client_info*);
 		static void _client_close(int signum);
