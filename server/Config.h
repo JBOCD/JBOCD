@@ -13,7 +13,7 @@ class Config{
 		static json_object *root, *nul;
 
 	private:
-		static char *tmpStr[CONFIG_MAX_KEY+1]; //config file key name should not exceed 20 char
+		static char *tmpStr; //config file key name should not exceed 20 char
 	public:
 		static void init();
 		static json_object *getFrom(const char *path, json_object *curRoot);
