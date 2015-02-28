@@ -1,4 +1,7 @@
 Client::Client(struct client_info* conn_conf){
+	struct client_thread_director* info = (struct client_thread_director*) MemManager::allocate(sizeof(struct client_thread_director));
+	info->object = this;
+	info->fptr = &Client::responseThread;
 	this->conn_conf = conn_conf;
 	inBuffer = (unsigned char*) malloc(WebSocket::MAX_PACKAGE_SIZE);
 	outBuffer = (unsigned char*) malloc(WebSocket::MAX_PACKAGE_SIZE);
@@ -14,7 +17,7 @@ Client::Client(struct client_info* conn_conf){
 	pthread_mutex_init(&client_end_mutex, NULL);
 
 	pthread_mutex_lock(&res_mutex);
-	pthread_create(&(responseThread_tid), NULL, &Client::responseThread, NULL);
+	pthread_create(&(responseThread_tid), NULL, &Client::thread_redirector, info);
 	Client::commandInterpreter();
 }
 void Client::loadCloudDrive(){
@@ -409,6 +412,8 @@ void Client::readSaveFile(){
 	sql::ResultSet *res;
 
 	info->object = (void*) this;
+	info->object = this;
+	info->fptr = &Client::processGetFileChunk;
 	info->isInsertOK = 0;
 	info->operationID = *(inBuffer +1);
 	info->ldid = Network::toInt(inBuffer + 2);
@@ -449,7 +454,7 @@ void Client::readSaveFile(){
 		info->isInsertOK = insert_chunk->executeUpdate();
 	}
 	delete res;
-	Thread::create(&Client::processSaveFile, (void*) info);
+	Thread::create(&Client::thread_redirector, (void*) info);
 }
 // 0x22 //done
 void Client::readGetFile(){
@@ -474,7 +479,8 @@ void Client::readGetFile(){
 
 		while(res->next()){
 			chunk_info = (struct client_read_file*) MemManager::allocate(sizeof(struct client_read_file));
-			chunk_info->object = (void*) this;
+			chunk_info->object = this;
+			chunk_info->fptr = &Client::processGetFileChunk;
 			chunk_info->operationID = *(inBuffer + 1);
 			chunk_info->ldid = logicalDriveID;
 			chunk_info->cdid = res->getUInt("cdid");
@@ -485,7 +491,7 @@ void Client::readGetFile(){
 			chunk_info->chunkName = (char*) MemManager::allocate(strlen(res->getString("chunk_name")->c_str())+1);
 			strcpy(chunk_info->chunkName, res->getString("chunk_name")->c_str());
 
-			Thread::create(&Client::processGetFileChunk, (void*) chunk_info);
+			Thread::create(&Client::thread_redirector, (void*) chunk_info);
 		}
 	}
 	delete res;
@@ -493,33 +499,36 @@ void Client::readGetFile(){
 // 0x28 //done
 void Client::readDelFile(){
 	struct client_del_file* info;
+	unsigned int ldid = Network::toInt(inBuffer + 2);
+	unsigned long long fileid = Network::toLongLong(inBuffer + 6) ;
 	sql::ResultSet *res;
-	get_file->setUInt( 1, Network::toInt(inBuffer + 2) );
-	get_file->setUInt64( 2, Network::toLongLong(inBuffer + 6) );
+	get_file->setUInt( 1, ldid );
+	get_file->setUInt64( 2, fileid );
 	res = get_file->executeQuery();
 	if(res->next()){
 		info = (struct client_del_file*) MemManager::allocate(sizeof(struct client_del_file));
-		info->object = (void*) this;
+		info->object = this;
+		info->fptr = &Client::processDelFile;
 		info->operationID = *(inBuffer+1);
-		info->fileid = res->getUInt("fileid");
+		info->fileid = fileid = res->getUInt("fileid");
 		info->name = (char*) MemManager::allocate( strlen( res->getString("name").c_str() ) + 1 );
 		strcpy(info->name, res->getString("name")->c_str());
 
-		del_file->setUInt( 1, Network::toInt(inBuffer + 2) );
-		del_file->setUInt64( 2, Network::toLongLong(inBuffer + 6) );
+		del_file->setUInt( 1, ldid );
+		del_file->setUInt64( 2, fileid );
 		del_file->executeUpdate();
 		if(res->getUInt64("size") > 0){
-			Thread::create(&Client::processDelFile, (void*) info);
+			Thread::create(&Client::thread_redirector, (void*) info);
 		}else{
+			Client::addResponseQueue(0x28, info);
 			delete res;
-			get_child->setUInt( 1, Network::toInt(inBuffer + 2) );
-			get_child->setUInt64( 2, Network::toLongLong(inBuffer + 6) );
+			get_child->setUInt( 1, ldid );
+			get_child->setUInt64( 2, fileid );
 			res = get_child->executeQuery();
 			while(res->next()){
-				Network::toBytes((unsigned long long) res->getUInt64(info->fileid), inBuffer + 6);
+				Network::toBytes((unsigned long long) res->getUInt64(fileid), inBuffer + 6);
 				Client::readDelFile();
 			}
-			Client::addResponseQueue(0x28, info);
 		}
 	}
 	delete res;
@@ -529,7 +538,6 @@ void Client::readDelFile(){
 // 0x21
 void* Client::processSaveFile(void *arg){
 	struct client_save_file* info = (struct client_save_file*) arg;
-	Client* client = (Client*) info->object;
 
 	char* dir;
 	CDDriver* cdDriver;
@@ -538,7 +546,7 @@ void* Client::processSaveFile(void *arg){
 	char* localPath  = (char*) MemManager::allocate(512);
 
 	// get remote store directory
-	for(struct client_logical_drive* ld = client->getLDRoot()->root; ld; ld = ld->next){
+	for(struct client_logical_drive* ld = ld_root->root; ld; ld = ld->next){
 		if(ld->ldid == info->ldid){
 			for(struct client_clouddrive* cd = ld->root; cd; cd = cd->next){
 				if(cd->cdid == info->cdid){
@@ -551,7 +559,7 @@ void* Client::processSaveFile(void *arg){
 	}
 
 	// get handle Cloud Drive driver
-	for(CDDriver** cd = client->getCDRoot()->root; *cd; cd++){
+	for(CDDriver** cd = cd_root->root; *cd; cd++){
 		if((*cd)->isID(info->cdid)){
 			cdDriver = *cd;
 			break;
@@ -564,19 +572,18 @@ void* Client::processSaveFile(void *arg){
 	}
 	MemManager::free(remotePath);
 	MemManager::free(localPath);
-	client->addResponseQueue(0x21, info);
+	Client::addResponseQueue(0x21, info);
 }
 // 0x23
 void* Client::processGetFileChunk(void *arg){
 	struct client_read_file* info = (struct client_read_file*) arg;
-	Client* client = (Client*) info->object;
 
 	char* dir;
 	CDDriver* cdDriver;
 	char* remotePath = (char*) MemManager::allocate(512);
 	char* localPath  = (char*) MemManager::allocate(512);
 	// get remote store directory
-	for(struct client_logical_drive* ld = client->getLDRoot()->root; ld; ld = ld->next){
+	for(struct client_logical_drive* ld = ld_root->root; ld; ld = ld->next){
 		if(ld->ldid == info->ldid){
 			for(struct client_clouddrive* cd = ld->root; cd; cd = cd->next){
 				if(cd->cdid == info->cdid){
@@ -589,7 +596,7 @@ void* Client::processGetFileChunk(void *arg){
 	}
 
 	// get handle Cloud Drive driver
-	for(CDDriver** cd = client->getCDRoot()->root; *cd; cd++){
+	for(CDDriver** cd = cd_root->root; *cd; cd++){
 		if((*cd)->isID(info->cdid)){
 			cdDriver = *cd;
 			break;
@@ -604,13 +611,12 @@ void* Client::processGetFileChunk(void *arg){
 
 	MemManager::free(remotePath);
 	MemManager::free(localPath);
-	client->addResponseQueue(0x23, info);
+	Client::addResponseQueue(0x23, info);
 }
 // 0x28
 void* Client::processDelFile(void *arg){
 	struct client_read_file* info = (struct client_read_file*) arg;
 	struct client_logical_drive* ld;
-	Client* client = (Client*) info->object;
 
 	char* dir;
 	CDDriver* cdDriver;
@@ -620,7 +626,7 @@ void* Client::processDelFile(void *arg){
 	sql::ResultSet *res;
 
 	// get logical drive info
-	for(ld = client->getLDRoot()->root; ld && ld->ldid != info->ldid; ld = ld->next);
+	for(ld = ld_root->root; ld && ld->ldid != info->ldid; ld = ld->next);
 
 	pstmt = MySQL::getCon()->prepareStatement("SELECT * FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
 	pstmt->setUInt(1, info->ldid);
@@ -639,7 +645,7 @@ void* Client::processDelFile(void *arg){
 		}
 
 		// get handle Cloud Drive driver
-		for(CDDriver** cd = client->getCDRoot()->root; *cd; cd++){
+		for(CDDriver** cd = cd_root->root; *cd; cd++){
 			if((*cd)->isID(cdid)){
 				cdDriver = *cd;
 				break;
@@ -661,7 +667,7 @@ void* Client::processDelFile(void *arg){
 
 	MemManager::free(remotePath);
 
-	client->addResponseQueue(0x28, info);
+	Client::addResponseQueue(0x28, info);
 }
 
 /* Send Result */
@@ -833,10 +839,7 @@ void Client::sendDelFile(void* a){
 	MemManager::free(info);
 
 }
-
-struct client_logical_drive* getLDRoot(){
-	return ld_root;
-}
-struct struct client_clouddrive_root* getCDRoot(){
-	return cd_root;
+void* Client::thread_redirector(void* arg){
+	struct client_thread_director* info = (struct client_thread_director*) arg;
+	(*info->object->fptr)(arg);
 }

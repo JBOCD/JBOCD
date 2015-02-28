@@ -22,115 +22,124 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-struct client_info{
-	struct sockaddr_in conn;
-	int connfd;
-	int sockLen;
-};
-
-struct clouddriver_handler_list{
-	void* handler;
-	int lid;
-	CDDriver* (*newCDDriver)(const char*, unsigned int);
-};
-
-struct client_response{
-	unsigned char command;
-	void * info;
-	struct client_response* next;
-};
-
-// 0x02
-struct client_clouddrive_root{
-	unsigned char operationID;
-	unsigned short numOfCloudDrives;
-	CDDriver ** root;
-};
-
-// 0x03
-struct client_clouddrive{
-	unsigned int cdid;
-	unsigned long long size;
-	char* dir;
-	struct client_clouddrive * next;
-};
-struct client_logical_drive{
-	unsigned int ldid;
-	unsigned int algoid;
-	unsigned long long size;
-	char* name;
-	unsigned short numOfCloudDrives;
-	struct client_logical_drive * next;
-	struct client_clouddrive * root;
-};
-struct client_logical_drive_root{
-	unsigned char operationID;
-	unsigned short numOfLogicalDrive;
-	struct client_logical_drive * root;
-};
-
-// 0x04
-struct client_list{
-	unsigned long long fileid;
-	unsigned long long fileSize;
-	char* name;
-	struct client_list* next;
-};
-struct client_list_root{
-	unsigned char operationID;
-	unsigned short numberOfFile;
-	struct client_list* root;
-};
-
-// 0x20
-struct client_make_file{
-	unsigned char operationID;
-	unsigned long long fileid;
-};
-
-// 0x21
-struct client_save_file{
-	unsigned char operationID;
-	unsigned int ldid;
-	unsigned int cdid;
-	unsigned long long fileid;
-	unsigned int seqnum;
-	char* remoteName;
-	unsigned int* tmpFile;
-	unsigned int chunkSize;
-	unsigned char isInsertOK;
-	void* object;
-};
-
-// 0x22
-struct client_read_file_info{
-	unsigned char operationID;
-	unsigned int num_of_chunk;
-};
-// 0x23
-struct client_read_file{
-	unsigned char operationID;
-	unsigned int ldid;
-	unsigned int cdid;
-	unsigned long long fileid;
-	unsigned int seqnum;
-	char* chunkName;
-	unsigned int* tmpFile;
-	unsigned int chunkSize;
-	void* object;
-};
-
-//0x28
-struct client_del_file{
-	unsigned char operationID;
-	unsigned int ldid;
-	unsigned long long fileid;
-	char* name;
-	void* object;
-};
 
 class Client{
 	private:
+
+		struct client_info{
+			struct sockaddr_in conn;
+			int connfd;
+			int sockLen;
+		};
+
+		struct clouddriver_handler_list{
+			void* handler;
+			int lid;
+			CDDriver* (*newCDDriver)(const char*, unsigned int);
+		};
+
+		struct client_response{
+			unsigned char command;
+			void * info;
+			struct client_response* next;
+		};
+
+		struct client_thread_director{
+			Client* object;
+			void (Client::*fptr)(void*);
+		};
+		// 0x02
+		struct client_clouddrive_root{
+			unsigned char operationID;
+			unsigned short numOfCloudDrives;
+			CDDriver ** root;
+		};
+
+		// 0x03
+		struct client_clouddrive{
+			unsigned int cdid;
+			unsigned long long size;
+			char* dir;
+			struct client_clouddrive * next;
+		};
+		struct client_logical_drive{
+			unsigned int ldid;
+			unsigned int algoid;
+			unsigned long long size;
+			char* name;
+			unsigned short numOfCloudDrives;
+			struct client_logical_drive * next;
+			struct client_clouddrive * root;
+		};
+		struct client_logical_drive_root{
+			unsigned char operationID;
+			unsigned short numOfLogicalDrive;
+			struct client_logical_drive * root;
+		};
+
+		// 0x04
+		struct client_list{
+			unsigned long long fileid;
+			unsigned long long fileSize;
+			char* name;
+			struct client_list* next;
+		};
+		struct client_list_root{
+			unsigned char operationID;
+			unsigned short numberOfFile;
+			struct client_list* root;
+		};
+
+		// 0x20
+		struct client_make_file{
+			unsigned char operationID;
+			unsigned long long fileid;
+		};
+
+		// 0x21
+		struct client_save_file{
+			Client* object;
+			void (Client::*fptr)(void*);
+			unsigned char operationID;
+			unsigned int ldid;
+			unsigned int cdid;
+			unsigned long long fileid;
+			unsigned int seqnum;
+			char* remoteName;
+			unsigned int* tmpFile;
+			unsigned int chunkSize;
+			unsigned char isInsertOK;
+		};
+
+		// 0x22
+		struct client_read_file_info{
+			unsigned char operationID;
+			unsigned int num_of_chunk;
+		};
+		// 0x23
+		struct client_read_file{
+			Client* object;
+			void (Client::*fptr)(void*);
+			unsigned char operationID;
+			unsigned int ldid;
+			unsigned int cdid;
+			unsigned long long fileid;
+			unsigned int seqnum;
+			char* chunkName;
+			unsigned int* tmpFile;
+			unsigned int chunkSize;
+		};
+
+		//0x28
+		struct client_del_file{
+			Client* object;
+			void (Client::*fptr)(void*);
+			unsigned char operationID;
+			unsigned int ldid;
+			unsigned long long fileid;
+			char* name;
+		};
+
 		struct client_info* conn_conf;
 		pthread_t responseThread_tid;
 
@@ -187,7 +196,8 @@ class Client{
 
 		void commandInterpreter();
 
-		void* responseThread(void* arg);
+		void addResponseQueue(unsigned char command, void* info);
+		void responseThread(void* arg);
 
 		void readLogin();
 		void readGetService();
@@ -198,6 +208,9 @@ class Client{
 		void readGetFile();
 		void readDelFile();
 
+		void processSaveFile(void *arg);
+		void processGetFileChunk(void *arg);
+		void processDelFile(void *arg);
 
 		void sendLogin(unsigned char command, void* a);
 		void sendGetCloudDrive();
@@ -211,14 +224,7 @@ class Client{
 	public:
 		Client(struct client_info*);
 		static void _client_close(int signum);
-
-		static void* processSaveFile(void *arg);
-		static void* processGetFileChunk(void *arg);
-		static void* processDelFile(void *arg);
-		void addResponseQueue(unsigned char command, void* info);
-
-		struct client_logical_drive* getLDRoot();
-		struct struct client_clouddrive_root* getCDRoot();
+		static void* _thread_redirector(void* arg);
 };
 #include "Client.cpp"
 
