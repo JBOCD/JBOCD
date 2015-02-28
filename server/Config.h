@@ -20,6 +20,9 @@ class Config{
 		static json_object *get(const char *path);
 };
 
+static json_object *Config::root = NULL;
+static json_object *Config::nul = NULL;
+
 #include "Config.cpp"
 
 #endif
