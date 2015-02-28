@@ -10,7 +10,7 @@ void FileManager::init(){
 void FileManager::newProcess(){
 	char* tmpStr = (char*) MemManager::allocate(512);
 	curAllocate = 0;
-	sprintf(tmpStr, "mkdir -p -m go=,u=rw %s%u",dirpath, (unsigned int)getpid());
+	sprintf(tmpStr, "mkdir -p -m go=,u=rwx %s%u",dirpath, (unsigned int)getpid());
 	system(tmpStr); // -_-!!
 	MemManager::free(tmpStr);
 }

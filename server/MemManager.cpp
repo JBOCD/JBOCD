@@ -11,6 +11,7 @@ void* MemManager::allocate(unsigned int size, bool isExactSize){
 	struct mem_header* result = NULL, *tmpPre, *tmpCur;
 	pthread_mutex_lock(&mutex);
 	tmpCur = free_list->next;
+	tmpPre = free_list;
 	while(tmpCur){
 		if(tmpCur->size == size || (tmpCur->size > size && !isExactSize)){
 			result = tmpCur;
@@ -37,6 +38,7 @@ void* MemManager::allocate(unsigned int size, bool isExactSize){
 			if(result = (struct mem_header*) malloc(sizeof(struct mem_header) + size)){
 				allocateSize+= size;
 				result->size = size;
+				result->other = result->next = NULL;
 			}
 		}
 	}

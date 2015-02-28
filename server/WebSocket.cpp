@@ -13,7 +13,7 @@ int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, 
 	int tmp;
 	bool isHandle = false;
 	err && (*err = ERR_NO_ERR);
-	while(sscanf((char*)request, "%[^:\r]: %s\r\n",buf_1,buf_2)){
+	while(sscanf((char*)request, "%[^:\r]: %s\r\n",buf_1,buf_2) > 0){
 		switch(*buf_1){
 			case 'S':
 				if(sscanf(buf_1, "Sec-WebSocket-%s", buf_1)){

@@ -15,7 +15,6 @@ Client::Client(struct client_info* conn_conf){
 	pthread_mutex_init(&res_mutex, NULL);
 	pthread_mutex_init(&res_queue_mutex, NULL);
 	pthread_mutex_init(&client_end_mutex, NULL);
-
 	pthread_mutex_lock(&res_mutex);
 	pthread_create(&(responseThread_tid), NULL, &Client::_thread_redirector, info);
 	Client::commandInterpreter();

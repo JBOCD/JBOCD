@@ -39,7 +39,7 @@ Server::Server(){
 				switch(child_pid = fork()){
 					case 0:
 						// child
-						close(sockfd); // close listen
+//						close(sockfd); // close listen
 						signal(SIGUSR1, &Server::_server_close); // Set signal handler when server close
 
 						// connect to DB
@@ -68,7 +68,7 @@ Server::Server(){
 void Server::_client_close(int signum){
 	pid_t pid;
 	int status;
-	while(pid = waitpid(-1, &status, WNOHANG)){
+	while( ( pid = waitpid(-1, &status, WNOHANG) ) > 0 ){
 		conn_count--;
 	}
 }
