@@ -47,7 +47,7 @@ Server::Server(){
 
 						// create tmpfile pool
 						FileManager::newProcess();
-						new Cliet(client_conf);
+						new Client(client_conf);
 						FileManager::endProcess();
 						close(client_conf->connfd);
 						exit(0);

@@ -23,6 +23,6 @@ int main() {
 	WebSocket::init();
 	
 	// start server
-	new Server(config);
+	new Server();
 }
 

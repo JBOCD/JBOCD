@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <fcntl.h>
 
+#include "MySQL.h"
 #include "Client.h"
 
 #ifndef SERVER_H

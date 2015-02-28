@@ -26,7 +26,7 @@ void* Thread::createThreadFromQueue(void* arg){
 	}while(1);
 }
 
-void Thread::create(void* callback, void* arg){
+void Thread::create(void* (*callback)(void*), void* arg){
 	struct thread_info* thread = (struct thread_info*) MemManager::allocate(sizeof(struct thread_info));
 	thread->cb = callback;
 	thread->arg = arg;
@@ -41,10 +41,10 @@ void Thread::create(void* callback, void* arg){
 	pthread_mutex_unlock(&new_thread_mutex);
 }
 
-void Thread::newThreadInit(void* info){
+void* Thread::newThreadInit(void* info){
 	struct thread_info* thread = (struct thread_info*) info;
 	pthread_t t = thread->tid;
-	*thread->cb(thread->arg);
+	(*thread->cb)(thread->arg);
 	MemManager::free(info);
 	Thread::addDelQueue(t);
 }

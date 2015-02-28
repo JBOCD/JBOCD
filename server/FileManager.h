@@ -35,7 +35,7 @@ class FileManager{
 		static void init();
 		static void newProcess();
 		static void endProcess();
-		static unsigned int* newTemp();
+		static unsigned int* newTemp(unsigned int fileSize);
 		static void deleteTemp(unsigned int* file_store);
 		static void freeTemp();
 		static int open(unsigned int* file, char mode);

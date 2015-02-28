@@ -113,7 +113,7 @@ struct client_read_file{
 	unsigned int cdid;
 	unsigned long long fileid;
 	unsigned int seqnum;
-	unsigned char* chunkName;
+	char* chunkName;
 	unsigned int* tmpFile;
 	unsigned int chunkSize;
 };
@@ -129,7 +129,7 @@ struct client_del_file{
 class Client{
 	private:
 		struct client_info* conn_conf;
-		pthread_t responseThread;
+		pthread_t responseThread_tid;
 
 // Client Info
 		unsigned int account_id;
@@ -143,7 +143,7 @@ class Client{
 		pthread_mutex_t client_end_mutex;
 
 // CloudDriver handler list
-		struct clouddriver_handler_list* cd_handler;
+		struct clouddriver_handler_list** cd_handler;
 
 // WebSocket
 		CDDriver ** tmpCDD;
@@ -203,6 +203,7 @@ class Client{
 		void sendLogin(unsigned char command, void* a);
 		void sendGetCloudDrive();
 		void sendGetLogicalDrive();
+		void sendList(void* a);
 		void sendCreateFile(void* a);
 		void sendSaveFile(void* a);
 		void sendGetFileInfo(void* a);

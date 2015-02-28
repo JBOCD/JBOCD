@@ -14,7 +14,7 @@ Client::Client(struct client_info* conn_conf){
 	pthread_mutex_init(&client_end_mutex, NULL);
 
 	pthread_mutex_lock(&res_mutex);
-	pthread_create(&(responseThread), NULL, &Client::responseThread, NULL);
+	pthread_create(&(responseThread_tid), NULL, &Client::responseThread, NULL);
 	Client::commandInterpreter();
 }
 void Client::loadCloudDrive(){
@@ -257,7 +257,7 @@ void Client::responseThread(){
 				switch(tmp->command){
 					case 0x00:
 					case 0x01:
-						Client::sendLogin(tmp->command, info);
+						Client::sendLogin(tmp->command, tmp->info);
 						break;
 					case 0x02:
 						Client::sendGetCloudDrive();
@@ -266,22 +266,22 @@ void Client::responseThread(){
 						Client::sendGetLogicalDrive();
 						break;
 					case 0x04:
-						Client::sendList(info);
+						Client::sendList(tmp->info);
 						break;
 					case 0x20:
-						Client::sendCreateFile(info);
+						Client::sendCreateFile(tmp->info);
 						break;
 					case 0x21:
-						Client::sendSaveFile(info);
+						Client::sendSaveFile(tmp->info);
 						break;
 					case 0x22:
-						Client::sendGetFileInfo(info);
+						Client::sendGetFileInfo(tmp->info);
 						break;
 					case 0x23:
-						Client::sendGetFileChunk(info);
+						Client::sendGetFileChunk(tmp->info);
 						break;
 					case 0x28:
-						Client::sendDelFile(info);
+						Client::sendDelFile(tmp->info);
 						break;
 					case 0x88:
 						send(conn_conf->connfd, outBuffer, WebSocket::close(outBuffer), 0);
@@ -302,21 +302,23 @@ void Client::responseThread(){
 // 0x00, 0x01 //done
 void Client::readLogin(){
 	struct client_list_root* info = (struct client_list_root*) MemManager::allocate(sizeof(struct client_list_root));
-	char* token = inBuffer+6;
+	char* token = (char*) inBuffer+6;
+	sql::ResultSet *res;
+
 	token[32]=0;
 	info->operationID = *(inBuffer+1);
-	accountID = Network::toInt(inBuffer+2);
+	account_id = Network::toInt(inBuffer+2);
 	check_token->setString(1, token);
-	check_token->setUInt(2, accountID);
+	check_token->setUInt(2, account_id);
 	res = check_token->executeQuery();
 	if(res->rowsCount() == 1){
 		Client::updatePrepareStatementAccount();
 		Client::loadCloudDrive();
 		Client::loadLogicalDrive();
 	}else{
-		accountID=0;
+		account_id=0;
 	}
-	Client::addResponseQueue(!!accountID /* 0x00 || 0x01 */ , info);
+	Client::addResponseQueue(!!account_id /* 0x00 || 0x01 */ , info);
 	delete res;
 }
 // 0x02 //done
@@ -396,7 +398,7 @@ void Client::readCreateFile(){
 		}
 	}
 	delete res;
-	Client::addResponseQueue(0x20, (void*) info));
+	Client::addResponseQueue(0x20, (void*) info);
 }
 // 0x21 //done
 void Client::readSaveFile(){
@@ -404,6 +406,8 @@ void Client::readSaveFile(){
 	unsigned short bufShift = 0;
 	unsigned long long maxSaveSize;
 	int fd;
+	sql::ResultSet *res;
+
 	info->isInsertOK = 0;
 	info->operationID = *(inBuffer +1);
 	info->ldid = Network::toInt(inBuffer + 2);
@@ -432,7 +436,7 @@ void Client::readSaveFile(){
 	}
 	isCont = false;
 
-	check_user_logical_drive->setInt(1, logicalDriveID);
+	check_user_logical_drive->setInt(1, info->ldid);
 	res = check_user_logical_drive->executeQuery();
 	if(res->rowsCount() == 1){
 		insert_chunk->setUInt(1,info->ldid);
@@ -464,7 +468,7 @@ void Client::readGetFile(){
 		res = get_file_chunk->executeQuery();
 
 		info->operationID = *(inBuffer + 1);
-		info->num_of_seq = res->rowsCount();
+		info->num_of_chunk = res->rowsCount();
 		Client::addResponseQueue(0x22, (void*) info);
 
 		while(res->next()){
@@ -502,14 +506,14 @@ void Client::readDelFile(){
 		del_file->setUInt64( 2, Network::toLongLong(inBuffer + 6) );
 		del_file->executeUpdate();
 		if(res->getUInt64("size") > 0){
-			Thread::create(&Client::processDelFile, (void*) info));
+			Thread::create(&Client::processDelFile, (void*) info);
 		}else{
 			delete res;
 			get_child->setUInt( 1, Network::toInt(inBuffer + 2) );
 			get_child->setUInt64( 2, Network::toLongLong(inBuffer + 6) );
 			res = get_child->executeQuery();
 			while(res->next()){
-				Network::toBytes((unsigned long long) res->getUInt64(fileid), inBuffer + 6);
+				Network::toBytes((unsigned long long) res->getUInt64(info->fileid), inBuffer + 6);
 				Client::readDelFile();
 			}
 			Client::addResponseQueue(0x28, info);
@@ -521,7 +525,7 @@ void Client::readDelFile(){
 /* Process Command */
 // 0x21
 void Client::processSaveFile(void *arg){
-	struct client_save_file* info = (struct client_save_file) arg;
+	struct client_save_file* info = (struct client_save_file*) arg;
 
 	char* dir;
 	CDDriver* cdDriver;
@@ -544,7 +548,7 @@ void Client::processSaveFile(void *arg){
 
 	// get handle Cloud Drive driver
 	for(CDDriver** cd = cd_root->root; *cd; cd++){
-		if(cd->isID(info->cdid)){
+		if((*cd)->isID(info->cdid)){
 			cdDriver = *cd;
 			break;
 		}
@@ -560,7 +564,7 @@ void Client::processSaveFile(void *arg){
 }
 // 0x23
 void Client::processGetFileChunk(void *arg){
-	struct client_read_file* info = (struct client_read_file) arg;
+	struct client_read_file* info = (struct client_read_file*) arg;
 
 	char* dir;
 	CDDriver* cdDriver;
@@ -581,13 +585,13 @@ void Client::processGetFileChunk(void *arg){
 
 	// get handle Cloud Drive driver
 	for(CDDriver** cd = cd_root->root; *cd; cd++){
-		if(cd->isID(info->cdid)){
+		if((*cd)->isID(info->cdid)){
 			cdDriver = *cd;
 			break;
 		}
 	}
 	info->tmpFile = FileManager::newTemp(info->chunkSize);
-	sprintf(remotePath, "%s%s", dir, info->remoteName);
+	sprintf(remotePath, "%s%s", dir, info->chunkName);
 	FileManager::getTempPath(info->tmpFile, localPath);
 	if(cdDriver->get(remotePath, localPath)){
 		// not zero mean fail
@@ -599,7 +603,7 @@ void Client::processGetFileChunk(void *arg){
 }
 // 0x28
 void Client::processDelFile(void *arg){
-	struct client_read_file* info = (struct client_read_file) arg;
+	struct client_read_file* info = (struct client_read_file*) arg;
 	struct client_logical_drive* ld;
 
 	char* dir;
@@ -630,7 +634,7 @@ void Client::processDelFile(void *arg){
 
 		// get handle Cloud Drive driver
 		for(CDDriver** cd = cd_root->root; *cd; cd++){
-			if(cd->isID(cdid)){
+			if((*cd)->isID(cdid)){
 				cdDriver = *cd;
 				break;
 			}
@@ -676,8 +680,8 @@ void Client::sendGetCloudDrive(){
 		if(WebSocket::willExceed(bufferShift,4)){
 			send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift), 0);
 			bufferShift=2;
-			*outBuffer = command;
-			*(outBuffer+1) = info->operationID;
+			*outBuffer = 0x02;
+			*(outBuffer+1) = cd_root->operationID;
 		}
 		Network::toBytes(cd[i]->getID(), outBuffer + bufferShift);
 	}
@@ -698,8 +702,8 @@ void Client::sendGetLogicalDrive(){
 		if( WebSocket::willExceed(bufferShift, 20+strlen(ld->name)+12*ld->numOfCloudDrives) ){
 			send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift), 0);
 			bufferShift=2;
-			*outBuffer = command;
-			*(outBuffer+1) = info->operationID;
+			*outBuffer = 0x03;
+			*(outBuffer+1) = ld_root->operationID;
 		}
 		Network::toBytes(ld->ldid  , outBuffer + bufferShift);
 		Network::toBytes(ld->algoid, outBuffer + bufferShift + 4);
@@ -748,7 +752,7 @@ void Client::sendList(void* a){
 
 // 0x20
 void Client::sendCreateFile(void* a){
-	struct client_list_root* info = (struct client_list_root*) a;
+	struct client_make_file* info = (struct client_make_file*) a;
 	*outBuffer = 0x20;
 	*(outBuffer+1) = info->operationID;
 	Network::toBytes(info->fileid, outBuffer+2);
@@ -813,7 +817,7 @@ void Client::sendGetFileChunk(void* a){
 }
 // 0x24
 void Client::sendDelFile(void* a){
-	struct client_read_file_info* info = (struct client_read_file_info*) a;
+	struct client_del_file* info = (struct client_del_file*) a;
 	*outBuffer = 0x28;
 	*(outBuffer+1) = info->operationID;
 	Network::toBytes(info->name, outBuffer + 2);

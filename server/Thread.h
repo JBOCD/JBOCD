@@ -12,7 +12,7 @@ struct thread_queue{
 struct thread_info{
 	struct thread_info* next;
 	pthread_t tid;
-	void* cb;
+	void* (*cb)(void*);
 	void* arg;
 };
 
@@ -31,15 +31,16 @@ class Thread{
 
 		static void addDelQueue(pthread_t t);
 		static void* createThreadFromQueue(void* arg);
-		static void newThreadInit(void* info);
+		static void* newThreadInit(void* info);
 		static void clearThread(); // only main thread can use this function
 		Thread();
 	public:
 		static void init(Config* conf);
-		static void create(void* callback, void* info);
+		static void create(void* (*callback)(void*), void* info);
 };
 
-struct thread_queue* Thread::delRoot = NULL, Thread::createRoot = NULL;
+struct thread_queue* Thread::delRoot = NULL
+struct thread_info* Thread::createRoot = NULL;
 pthread_mutex_t Thread::del_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t Thread::new_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t Thread::new_thread_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
