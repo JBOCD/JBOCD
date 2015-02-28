@@ -8,7 +8,7 @@ void* MemManager::allocate(unsigned int size){
 	return MemManager::allocate(size, false);
 }
 void* MemManager::allocate(unsigned int size, bool isExactSize){
-	struct mem_header* result, *tmpPre = &free_list-> *tmpCur;
+	struct mem_header* result, *tmpPre, *tmpCur;
 	pthread_mutex_lock(&mutex);
 	tmpCur = free_list->next;
 	while(tmpCur){
@@ -43,7 +43,7 @@ void* MemManager::allocate(unsigned int size, bool isExactSize){
 
 void MemManager::free(void* mem){
 	struct mem_header* free_mem = ((struct mem_header*) mem)-1;
-	struct mem_header* tmpPre = &free_list-> *tmpCur;
+	struct mem_header* tmpPre, *tmpCur;
 	pthread_mutex_lock(&mutex);
 	tmpCur = free_list->next;
 	while(tmpCur){

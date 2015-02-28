@@ -26,7 +26,7 @@ class FileManager{
 		static unsigned int maxAllocate;
 		static unsigned int curAllocate;
 
-		static char* dirpath;
+		static const char* dirpath;
 
 		static pthread_mutex_t file_mutex;
 		static pthread_mutex_t allocate_mutex;
@@ -48,7 +48,7 @@ struct file_store* FileManager::free_list = NULL;
 unsigned int FileManager::maxAllocate = 0;
 unsigned int FileManager::curAllocate = 0;
 
-char* FileManager::dirpath = NULL;
+const char* FileManager::dirpath = NULL;
 
 pthread_mutex_t FileManager::file_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t FileManager::allocate_mutex = PTHREAD_MUTEX_INITIALIZER;

@@ -28,7 +28,7 @@ class MemManager{
 		static void free(void* mem);
 };
 
-struct mem_header* MemManager::free_list = (struct mem_header*) malloc(sizeof(struct mem_header*)));
+struct mem_header* MemManager::free_list = (struct mem_header*) malloc(sizeof(struct mem_header*));
 unsigned int MemManager::maxAllocate = 0;
 unsigned int MemManager::allocateSize = 0;
 pthread_mutex_t MemManager::mutex = PTHREAD_MUTEX_INITIALIZER;
