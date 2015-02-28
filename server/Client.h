@@ -99,6 +99,7 @@ struct client_save_file{
 	unsigned int* tmpFile;
 	unsigned int chunkSize;
 	unsigned char isInsertOK;
+	void* object;
 };
 
 // 0x22
@@ -116,6 +117,7 @@ struct client_read_file{
 	char* chunkName;
 	unsigned int* tmpFile;
 	unsigned int chunkSize;
+	void* object;
 };
 
 //0x28
@@ -124,6 +126,7 @@ struct client_del_file{
 	unsigned int ldid;
 	unsigned long long fileid;
 	char* name;
+	void* object;
 };
 
 class Client{
@@ -184,7 +187,6 @@ class Client{
 
 		void commandInterpreter();
 
-		void addResponseQueue(unsigned char command, void* info);
 		void* responseThread(void* arg);
 
 		void readLogin();
@@ -196,9 +198,6 @@ class Client{
 		void readGetFile();
 		void readDelFile();
 
-		void* processSaveFile(void *arg);
-		void* processGetFileChunk(void *arg);
-		void* processDelFile(void *arg);
 
 		void sendLogin(unsigned char command, void* a);
 		void sendGetCloudDrive();
@@ -212,8 +211,15 @@ class Client{
 	public:
 		Client(struct client_info*);
 		static void _client_close(int signum);
-};
 
+		static void* processSaveFile(void *arg);
+		static void* processGetFileChunk(void *arg);
+		static void* processDelFile(void *arg);
+		void addResponseQueue(unsigned char command, void* info);
+
+		struct client_logical_drive* getLDRoot();
+		struct struct client_clouddrive_root* getCDRoot();
+};
 #include "Client.cpp"
 
 #endif
