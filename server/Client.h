@@ -26,12 +26,6 @@
 class Client{
 	private:
 
-		struct client_info{
-			struct sockaddr_in conn;
-			int connfd;
-			int sockLen;
-		};
-
 		struct clouddriver_handler_list{
 			void* handler;
 			int lid;

@@ -17,7 +17,7 @@ Client::Client(struct client_info* conn_conf){
 	pthread_mutex_init(&client_end_mutex, NULL);
 
 	pthread_mutex_lock(&res_mutex);
-	pthread_create(&(responseThread_tid), NULL, &Client::thread_redirector, info);
+	pthread_create(&(responseThread_tid), NULL, &Client::_thread_redirector, info);
 	Client::commandInterpreter();
 }
 void Client::loadCloudDrive(){
@@ -454,7 +454,7 @@ void Client::readSaveFile(){
 		info->isInsertOK = insert_chunk->executeUpdate();
 	}
 	delete res;
-	Thread::create(&Client::thread_redirector, (void*) info);
+	Thread::create(&Client::_thread_redirector, (void*) info);
 }
 // 0x22 //done
 void Client::readGetFile(){
@@ -491,7 +491,7 @@ void Client::readGetFile(){
 			chunk_info->chunkName = (char*) MemManager::allocate(strlen(res->getString("chunk_name")->c_str())+1);
 			strcpy(chunk_info->chunkName, res->getString("chunk_name")->c_str());
 
-			Thread::create(&Client::thread_redirector, (void*) chunk_info);
+			Thread::create(&Client::_thread_redirector, (void*) chunk_info);
 		}
 	}
 	delete res;
@@ -518,7 +518,7 @@ void Client::readDelFile(){
 		del_file->setUInt64( 2, fileid );
 		del_file->executeUpdate();
 		if(res->getUInt64("size") > 0){
-			Thread::create(&Client::thread_redirector, (void*) info);
+			Thread::create(&Client::_thread_redirector, (void*) info);
 		}else{
 			Client::addResponseQueue(0x28, info);
 			delete res;
@@ -536,7 +536,7 @@ void Client::readDelFile(){
 
 /* Process Command */
 // 0x21
-void* Client::processSaveFile(void *arg){
+void Client::processSaveFile(void *arg){
 	struct client_save_file* info = (struct client_save_file*) arg;
 
 	char* dir;
@@ -575,7 +575,7 @@ void* Client::processSaveFile(void *arg){
 	Client::addResponseQueue(0x21, info);
 }
 // 0x23
-void* Client::processGetFileChunk(void *arg){
+void Client::processGetFileChunk(void *arg){
 	struct client_read_file* info = (struct client_read_file*) arg;
 
 	char* dir;
@@ -614,7 +614,7 @@ void* Client::processGetFileChunk(void *arg){
 	Client::addResponseQueue(0x23, info);
 }
 // 0x28
-void* Client::processDelFile(void *arg){
+void Client::processDelFile(void *arg){
 	struct client_read_file* info = (struct client_read_file*) arg;
 	struct client_logical_drive* ld;
 
@@ -839,7 +839,7 @@ void Client::sendDelFile(void* a){
 	MemManager::free(info);
 
 }
-void* Client::thread_redirector(void* arg){
+void* Client::_thread_redirector(void* arg){
 	struct client_thread_director* info = (struct client_thread_director*) arg;
 	(*info->object->fptr)(arg);
 }
