@@ -56,13 +56,13 @@ int WebSocket::getMsg(int fd, unsigned char* buf, int size, bool isContinue,  lo
 	// it should be wait for slow network
 	int readLen = recv(fd, buf, size, 0); 
 	*err = ERR_NO_ERR;
-	if(isContinue){
+	if(readLen && isContinue){
 		// continue read
 		// nothing done
 		// bye
 		decode(buf, buf, maskKey, readLen);
 		*payloadLen -= readLen;
-	}else if(buf[0] & 0x08){
+	}else if(!readLen || buf[0] & 0x08){
 		// close connection opcode
 		buf[0] = 0x88;
 		buf[1] = 0;

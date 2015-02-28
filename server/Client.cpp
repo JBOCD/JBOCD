@@ -222,7 +222,7 @@ void Client::commandInterpreter(){
 			case 0x88:
 				Client::addResponseQueue(0x88, NULL);
 				isEnd = true;
-				break; 
+				break;
 		}
 
 	}while(!isEnd);
