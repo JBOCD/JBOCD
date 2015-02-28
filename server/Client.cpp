@@ -841,5 +841,6 @@ void Client::sendDelFile(void* a){
 }
 void* Client::_thread_redirector(void* arg){
 	struct client_thread_director* info = (struct client_thread_director*) arg;
-	info->object->(*info->fptr)(arg);
+	void (Client::*fptr)(void*) = info->fptr;
+	(info->object->*fptr)(arg);
 }
