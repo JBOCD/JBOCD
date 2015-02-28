@@ -247,7 +247,7 @@ void Client::addResponseQueue(unsigned char command, void* info){
 	pthread_mutex_unlock(&res_mutex);
 }
 
-void* Client::responseThread(void* arg){
+void Client::responseThread(void* arg){
 	bool isEnd = false;
 	struct client_response* tmp;
 	do{
@@ -411,9 +411,9 @@ void Client::readSaveFile(){
 	int fd;
 	sql::ResultSet *res;
 
-	info->object = (void*) this;
 	info->object = this;
 	info->fptr = &Client::processGetFileChunk;
+
 	info->isInsertOK = 0;
 	info->operationID = *(inBuffer +1);
 	info->ldid = Network::toInt(inBuffer + 2);
@@ -841,5 +841,5 @@ void Client::sendDelFile(void* a){
 }
 void* Client::_thread_redirector(void* arg){
 	struct client_thread_director* info = (struct client_thread_director*) arg;
-	(*info->object->fptr)(arg);
+	info->object->(*info->fptr)(arg);
 }
