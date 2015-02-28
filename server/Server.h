@@ -16,13 +16,6 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-
-struct client_info{
-	struct sockaddr_in conn;
-	int connfd;
-	int sockLen;
-};
-
 class Server{
 	private:
 		short port;

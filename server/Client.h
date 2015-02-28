@@ -22,6 +22,11 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+struct client_info{
+	struct sockaddr_in conn;
+	int connfd;
+	int sockLen;
+};
 
 class Client{
 	private:
