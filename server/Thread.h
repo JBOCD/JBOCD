@@ -39,7 +39,7 @@ class Thread{
 		static void create(void* (*callback)(void*), void* info);
 };
 
-struct thread_queue* Thread::delRoot = NULL
+struct thread_queue* Thread::delRoot = NULL;
 struct thread_info* Thread::createRoot = NULL;
 pthread_mutex_t Thread::del_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t Thread::new_thread_mutex = PTHREAD_MUTEX_INITIALIZER;

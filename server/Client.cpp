@@ -49,28 +49,28 @@ void Client::loadCloudDrive(){
 		strcpy(classname, res->getString("classname")->c_str());
 		cdid = res->getUInt("cdid");
 		lid = res->getUInt("lid");
-		for(j=0;!cd_handler[j]->lid && cd_handler[j]->lid != lid;j++);
-		if(!cd_handler[j]->lid){
+		for(j=0;!cd_handler[j].lid && cd_handler[j].lid != lid;j++);
+		if(!cd_handler[j].lid){
 			sprintf(tmpStr, "/usr/local/lib/lib%s.so", classname); // path hardcode now
-			cd_handler[j]->lid = lid;
-			cd_handler[j]->handler = dlopen(tmpStr, RTLD_NOW | RTLD_LOCAL);
-			if(!handle){
+			cd_handler[j].lid = lid;
+			cd_handler[j].handler = dlopen(tmpStr, RTLD_NOW | RTLD_LOCAL);
+			if(!cd_handler[j].handle){
 				fprintf(stderr, "Cannot load library. Path: \"%s\", Error: \"%s\"\n", tmpStr, dlerror());
-				cd_handler[j]->lid = 0;
+				cd_handler[j].lid = 0;
 				continue;
 			}
-			*(void **)(&(cd_handler[j]->newCDDriver))=dlsym(handle,"createObject");
+			*(void **)(&(cd_handler[j].newCDDriver))=dlsym(cd_handler[j].handle,"createObject");
 			if((error=dlerror())!=NULL){
 				fprintf(stderr, "Cannot find function \"CDDriver* createObject(const char*, int)\". Class: \"%s\", Error: \"%s\"\n", classname, error);
-				dlclose(cd_handler[j]->handler);
-				cd_handler[j]->lid = 0;
+				dlclose(cd_handler[j].handler);
+				cd_handler[j].lid = 0;
 				continue;
 			}
 		}
 		sprintf(tmpStr, "SELECT `id`, `key` FROM `%s` WHERE `id`=%u", classname, cdid);
 		res1 = stmt->executeQuery(tmpStr);
 		// http://www.linuxjournal.com/article/3687?page=0,0
-		cd_root->root[cd_root->numOfCloudDrives] = (*cd_handler[j]->newCDDriver)(res->getString("key"), res->getUInt("id"));
+		cd_root->root[cd_root->numOfCloudDrives] = (*cd_handler[j].newCDDriver)(res->getString("key")->c_str(), res->getUInt("id"));
 		delete res1;
 	}
 	cd_root->root[cd_root->numOfCloudDrives]=NULL;
@@ -104,7 +104,7 @@ void Client::loadLogicalDrive(){
 		ld_last->ldid = res->getUInt("ldid");
 		ld_last->algoid = res->getUInt("algoid");
 		ld_last->name = (char*)MemManager::allocate(strlen(res->getString("name")->c_str())+1);
-		strcpy(tmpstr, res->getString("name")->c_str());
+		strcpy(ld_last->name, res->getString("name")->c_str());
 		ld_last->size = res->getUInt64("size");
 		ld_last->root = NULL;
 		ld_last->next = NULL;
@@ -114,7 +114,7 @@ void Client::loadLogicalDrive(){
 
 		ld_last->numOfCloudDrives = res1->rowsCount();
 		while(res1->next()){
-			if(info->root){
+			if(ld_last->root){
 				cd_last = ( cd_last->next = (struct client_clouddrive*) MemManager::allocate(sizeof(struct client_clouddrive)) );
 			}else{
 				cd_last = ( ld_last->root = (struct client_clouddrive*) MemManager::allocate(sizeof(struct client_clouddrive)) );
@@ -244,7 +244,7 @@ void Client::addResponseQueue(unsigned char command, void* info){
 	pthread_mutex_unlock(&res_mutex);
 }
 
-void Client::responseThread(){
+void* Client::responseThread(void* arg){
 	bool isEnd = false;
 	struct client_response* tmp;
 	do{
@@ -448,7 +448,7 @@ void Client::readSaveFile(){
 		info->isInsertOK = insert_chunk->executeUpdate();
 	}
 	delete res;
-	Thread::create(&Client::processSaveFile, (void*) info));
+	Thread::create(&Client::processSaveFile, (void*) info);
 }
 // 0x22 //done
 void Client::readGetFile(){
@@ -483,7 +483,7 @@ void Client::readGetFile(){
 			chunk_info->chunkName = (char*) MemManager::allocate(strlen(res->getString("chunk_name")->c_str())+1);
 			strcpy(chunk_info->chunkName, res->getString("chunk_name")->c_str());
 
-			Thread::create(&Client::processGetFileChunk, (void*) chunk_info));
+			Thread::create(&Client::processGetFileChunk, (void*) chunk_info);
 		}
 	}
 	delete res;
@@ -524,7 +524,7 @@ void Client::readDelFile(){
 
 /* Process Command */
 // 0x21
-void Client::processSaveFile(void *arg){
+void* Client::processSaveFile(void *arg){
 	struct client_save_file* info = (struct client_save_file*) arg;
 
 	char* dir;
@@ -563,7 +563,7 @@ void Client::processSaveFile(void *arg){
 	Client::addResponseQueue(0x21, info);
 }
 // 0x23
-void Client::processGetFileChunk(void *arg){
+void* Client::processGetFileChunk(void *arg){
 	struct client_read_file* info = (struct client_read_file*) arg;
 
 	char* dir;
@@ -602,7 +602,7 @@ void Client::processGetFileChunk(void *arg){
 	Client::addResponseQueue(0x23, info);
 }
 // 0x28
-void Client::processDelFile(void *arg){
+void* Client::processDelFile(void *arg){
 	struct client_read_file* info = (struct client_read_file*) arg;
 	struct client_logical_drive* ld;
 
@@ -617,8 +617,8 @@ void Client::processDelFile(void *arg){
 	for(ld = ld_root->root; ld && ld->ldid != info->ldid; ld = ld->next);
 
 	pstmt = MySQL::getCon()->prepareStatement("SELECT * FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
-	pstmt->setUInt(info->ldid);
-	pstmt->setUInt64(info->fileid);
+	pstmt->setUInt(1, info->ldid);
+	pstmt->setUInt64(2, info->fileid);
 	res = pstmt->executeQuery();
 	// select all file id chunk
 	while(res->next()){
@@ -648,8 +648,8 @@ void Client::processDelFile(void *arg){
 	delete pstmt;
 	// del all file id
 	pstmt = MySQL::getCon()->prepareStatement("DELETE FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
-	pstmt->setUInt(info->ldid);
-	pstmt->setUInt64(info->fileid);
+	pstmt->setUInt(1, info->ldid);
+	pstmt->setUInt64(2, info->fileid);
 	pstmt->executeUpdate();
 	delete pstmt;
 
@@ -736,7 +736,7 @@ void Client::sendList(void* a){
 		if(WebSocket::willExceed(bufferShift, 18+strlen(dir->name)) ){
 			send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift), 0);
 			bufferShift=2;
-			*outBuffer = command;
+			*outBuffer = 0x04;
 			*(outBuffer+1) = info->operationID;
 		}
 		Network::toBytes(dir->fileid  , outBuffer + bufferShift);
@@ -770,7 +770,7 @@ void Client::sendSaveFile(void* a){
 
 	send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 11), 0);
 
-	FileManager::deleteTemp(tmpFile);
+	FileManager::deleteTemp(info->tmpFile);
 	MemManager::free(info->remoteName);
 	MemManager::free(info);
 }
@@ -779,7 +779,7 @@ void Client::sendGetFileInfo(void* a){
 	struct client_read_file_info* info = (struct client_read_file_info*) a;
 	*outBuffer = 0x22;
 	*(outBuffer+1) = info->operationID;
-	Network::toBytes(info->num_of_seq, outBuffer + 2);
+	Network::toBytes(info->num_of_chunk, outBuffer + 2);
 
 	send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 6), 0);
 	MemManager::free(info);

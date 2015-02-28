@@ -143,7 +143,7 @@ class Client{
 		pthread_mutex_t client_end_mutex;
 
 // CloudDriver handler list
-		struct clouddriver_handler_list** cd_handler;
+		struct clouddriver_handler_list* cd_handler;
 
 // WebSocket
 		CDDriver ** tmpCDD;
@@ -185,7 +185,7 @@ class Client{
 		void commandInterpreter();
 
 		void addResponseQueue(unsigned char command, void* info);
-		void responseThread();
+		void* responseThread(void* arg);
 
 		void readLogin();
 		void readGetService();
@@ -196,9 +196,9 @@ class Client{
 		void readGetFile();
 		void readDelFile();
 
-		void processSaveFile(void *arg);
-		void processGetFileChunk(void *arg);
-		void processDelFile(void *arg);
+		void* processSaveFile(void *arg);
+		void* processGetFileChunk(void *arg);
+		void* processDelFile(void *arg);
 
 		void sendLogin(unsigned char command, void* a);
 		void sendGetCloudDrive();
