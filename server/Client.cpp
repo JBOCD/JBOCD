@@ -20,7 +20,7 @@ Client::Client(struct client_info* conn_conf){
 	Client::commandInterpreter();
 }
 void Client::loadCloudDrive(){
-	sql::PreparedStatement* get_cloud_drive_list = MySQL::getCon()->prepareStatement("SELECT `a`.`cdid` as `cdid`, `a`.`lid`, `b`.`dir` as `classname` FROM `clouddrive` as `a`, `libraries` as `b` WHERE `a`.`uid`=? AND `a`.`id`=`b`.`lid`");
+	sql::PreparedStatement* get_cloud_drive_list = MySQL::getCon()->prepareStatement("SELECT `a`.`cdid` as `cdid`, `a`.`lid`, `b`.`dir` as `classname` FROM `clouddrive` as `a`, `libraries` as `b` WHERE `a`.`uid`=? AND `a`.`lid`=`b`.`id`");
 	sql::PreparedStatement* get_number_of_library = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT COUNT(`lid`) FROM `clouddrive` WHERE `uid`=? GROUP BY `lid`),0) as `num_of_lib`");
 	sql::ResultSet* res;
 	sql::ResultSet* res1;
@@ -38,48 +38,50 @@ void Client::loadCloudDrive(){
 	get_number_of_library->setInt(1, account_id);
 	res = get_number_of_library->executeQuery();
 
-	cd_handler = (struct clouddriver_handler_list*) MemManager::allocate(sizeof(struct clouddriver_handler_list) * (res->getInt("num_of_lib") + 1));
-	memset(cd_handler, 0, sizeof(struct clouddriver_handler_list) * (res->getInt("num_of_lib") + 1));
-	delete res;
+	if(res->next()){
+		cd_handler = (struct clouddriver_handler_list*) MemManager::allocate(sizeof(struct clouddriver_handler_list) * (res->getInt("num_of_lib") + 1));
+		memset(cd_handler, 0, sizeof(struct clouddriver_handler_list) * (res->getInt("num_of_lib") + 1));
+		delete res;
 
-	get_cloud_drive_list->setInt(1, account_id);
-	res = get_cloud_drive_list->executeQuery();
+		get_cloud_drive_list->setInt(1, account_id);
+		res = get_cloud_drive_list->executeQuery();
 
-	cd_root = (struct client_clouddrive_root*) MemManager::allocate(sizeof(struct client_clouddrive_root));
-	cd_root->root = (CDDriver **) malloc(sizeof(CDDriver*) * (res->rowsCount() + 2)); // 1 is enough, 2 is safety
-	for(cd_root->numOfCloudDrives=0; res->next(); cd_root->numOfCloudDrives++){
-		strcpy(classname, res->getString("classname")->c_str());
-		cdid = res->getUInt("cdid");
-		lid = res->getUInt("lid");
-		for(j=0;!cd_handler[j].lid && cd_handler[j].lid != lid;j++);
-		if(!cd_handler[j].lid){
-			sprintf(tmpStr, "/usr/local/lib/lib%s.so", classname); // path hardcode now
-			cd_handler[j].lid = lid;
-			cd_handler[j].handler = dlopen(tmpStr, RTLD_NOW | RTLD_LOCAL);
-			if(!cd_handler[j].handler){
-				fprintf(stderr, "Cannot load library. Path: \"%s\", Error: \"%s\"\n", tmpStr, dlerror());
-				cd_handler[j].lid = 0;
-				continue;
+		cd_root = (struct client_clouddrive_root*) MemManager::allocate(sizeof(struct client_clouddrive_root));
+		cd_root->root = (CDDriver **) malloc(sizeof(CDDriver*) * (res->rowsCount() + 2)); // 1 is enough, 2 is safety
+		for(cd_root->numOfCloudDrives=0; res->next(); cd_root->numOfCloudDrives++){
+			strcpy(classname, res->getString("classname")->c_str());
+			cdid = res->getUInt("cdid");
+			lid = res->getUInt("lid");
+			for(j=0;!cd_handler[j].lid && cd_handler[j].lid != lid;j++);
+			if(!cd_handler[j].lid){
+				sprintf(tmpStr, "/usr/local/lib/lib%s.so", classname); // path hardcode now
+				cd_handler[j].lid = lid;
+				cd_handler[j].handler = dlopen(tmpStr, RTLD_NOW | RTLD_LOCAL);
+				if(!cd_handler[j].handler){
+					fprintf(stderr, "Cannot load library. Path: \"%s\", Error: \"%s\"\n", tmpStr, dlerror());
+					cd_handler[j].lid = 0;
+					continue;
+				}
+				*(void **)(&(cd_handler[j].newCDDriver))=dlsym(cd_handler[j].handler,"createObject");
+				if((error=dlerror())!=NULL){
+					fprintf(stderr, "Cannot find function \"CDDriver* createObject(const char*, int)\". Class: \"%s\", Error: \"%s\"\n", classname, error);
+					dlclose(cd_handler[j].handler);
+					cd_handler[j].lid = 0;
+					continue;
+				}
 			}
-			*(void **)(&(cd_handler[j].newCDDriver))=dlsym(cd_handler[j].handler,"createObject");
-			if((error=dlerror())!=NULL){
-				fprintf(stderr, "Cannot find function \"CDDriver* createObject(const char*, int)\". Class: \"%s\", Error: \"%s\"\n", classname, error);
-				dlclose(cd_handler[j].handler);
-				cd_handler[j].lid = 0;
-				continue;
-			}
+			sprintf(tmpStr, "SELECT `id`, `key` FROM `%s` WHERE `id`=%u", classname, cdid);
+			res1 = stmt->executeQuery(tmpStr);
+			// http://www.linuxjournal.com/article/3687?page=0,0
+			cd_root->root[cd_root->numOfCloudDrives] = (*cd_handler[j].newCDDriver)(res->getString("key")->c_str(), res->getUInt("id"));
+			delete res1;
 		}
-		sprintf(tmpStr, "SELECT `id`, `key` FROM `%s` WHERE `id`=%u", classname, cdid);
-		res1 = stmt->executeQuery(tmpStr);
-		// http://www.linuxjournal.com/article/3687?page=0,0
-		cd_root->root[cd_root->numOfCloudDrives] = (*cd_handler[j].newCDDriver)(res->getString("key")->c_str(), res->getUInt("id"));
-		delete res1;
+		cd_root->root[cd_root->numOfCloudDrives]=NULL;
+		delete res;
+		delete stmt;
+		delete get_cloud_drive_list;
+		delete get_number_of_library;
 	}
-	cd_root->root[cd_root->numOfCloudDrives]=NULL;
-	delete res;
-	delete stmt;
-	delete get_cloud_drive_list;
-	delete get_number_of_library;
 	MemManager::free(classname);
 	MemManager::free(tmpStr);
 }
