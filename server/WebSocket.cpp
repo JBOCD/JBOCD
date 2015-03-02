@@ -60,7 +60,7 @@ int WebSocket::getMsg(int fd, unsigned char* buf, int size, bool isContinue,  lo
 		// continue read
 		// nothing done
 		// bye
-		decode(buf, buf, maskKey, readLen);
+		decode((unsigned long long*) (buf), (unsigned long long*) (buf), maskKey, readLen);
 		*payloadLen -= readLen;
 	}else if(!readLen || buf[0] & 0x08){
 		// close connection opcode
@@ -83,21 +83,21 @@ int WebSocket::getMsg(int fd, unsigned char* buf, int size, bool isContinue,  lo
 			maskKey[1] = buf[3];
 			maskKey[2] = buf[4];
 			maskKey[3] = buf[5];
-			decode(buf+6, buf, maskKey, readLen-=6);
+			decode((unsigned long long*) (buf+6), (unsigned long long*) (buf), maskKey, readLen-=6);
 		}else if(*payloadLen == 126){
 			*payloadLen=Network::toShort(buf+2);
 			maskKey[0] = buf[4];
 			maskKey[1] = buf[5];
 			maskKey[2] = buf[6];
 			maskKey[3] = buf[7];
-			decode(buf+8, buf, maskKey, readLen-=8);
+			decode((unsigned long long*) (buf+8), (unsigned long long*) (buf), maskKey, readLen-=8);
 		}else{
 			*payloadLen=Network::toLongLong(buf+2);
 			maskKey[0] = buf[10];
 			maskKey[1] = buf[11];
 			maskKey[2] = buf[12];
 			maskKey[3] = buf[13];
-			decode(buf+14, buf, maskKey, readLen-=14);
+			decode((unsigned long long*) (buf+14), (unsigned long long*) (buf), maskKey, readLen-=14);
 		}
 		*payloadLen -= readLen;
 	}
@@ -127,64 +127,18 @@ int WebSocket::close(unsigned char* buf){
 	return 2;
 }
 
-void WebSocket::decode(unsigned char* in, unsigned char* out, unsigned char* maskKey, int len){
-//	unsigned char tmp[4];
-	unsigned long long* inLL = (unsigned long long*) in;
-	unsigned long long* outLL = (unsigned long long*) out;
+void WebSocket::decode(unsigned long long* in, unsigned long long* out, unsigned char* maskKey, int len){
 	unsigned long long maskKeyLL;
 	memcpy(                   &maskKeyLL     , maskKey, 4);
 	memcpy( ((unsigned char*) &maskKeyLL) + 4, maskKey, 4);
-	int i=0, j=len/8;
-//	int i=0, j=len/4;
-	for(;i<j;i++,inLL++,outLL++){
-//	for(;i<j;i++){
-		*outLL = *inLL ^ maskKeyLL;
-/*
-		out[0] = in[0] ^ maskKey[0];
-		out[1] = in[1] ^ maskKey[1];
-		out[2] = in[2] ^ maskKey[2];
-		out[3] = in[3] ^ maskKey[3];
-
-		out+=4;	in+=4;
-*/
+	int i=0, j=(len+7)/8;
+	for(;i<j;i++,in++,outLL++){
+		*outLL = *in ^ maskKeyLL;
 	}
-	j=len%8;
-	out = (unsigned char*) outLL;
-	in = (unsigned char*) inLL;
-/*
-	if(j > 4){
-		*((int*) out) = *((int*)in) ^ (int)maskKeyLL;
-		out+=4;	in+=4;
-		j-=4;
-	}
-	for(i=0;i<4;i++){
-		if(i<j){
-			tmp[i+(4-j)] = maskKey[i];
-			out[i] = in[i] ^ maskKey[i];
-		}else{
-			tmp[i-j] = maskKey[i];
-		}
-	}
-	memcpy( maskKey, tmp, 4);
-*/
-	switch(j){
-		case 7:
-			out[6] = in[6] ^ maskKey[2];
-		case 6:
-			out[5] = in[5] ^ maskKey[1];
-		case 5:
-			out[4] = in[4] ^ maskKey[0];
-		case 4:
-			out[3] = in[3] ^ maskKey[3];
-		case 3:
-			out[2] = in[2] ^ maskKey[2];
-		case 2:
-			out[1] = in[1] ^ maskKey[1];
-		case 1:
-			j=len%4;
-			out[0] = in[0] ^ maskKey[0];
-			memcpy( maskKey    , ((unsigned char*)&maskKeyLL)+j, 4-j);
-			memcpy( maskKey+4-j,                  &maskKeyLL   , j  );
+	
+	if(j=len%4){
+		memcpy( maskKey    , ((unsigned char*)&maskKeyLL)+j, 4-j);
+		memcpy( maskKey+4-j,                  &maskKeyLL   , j  );
 	}
 }
 

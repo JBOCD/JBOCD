@@ -16,7 +16,7 @@ class WebSocket{
 		WebSocket();
 		static const char * const WS_GUID;
 
-		static void decode(unsigned char* in, unsigned char* out, unsigned char* maskKey, int len);
+		static void decode(unsigned long long* in, unsigned long long* out, unsigned char* maskKey, int len);
 	public:
 		static const int ERR_NO_ERR;
 		static const int ERR_VER_MISMATCH;

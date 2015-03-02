@@ -3,7 +3,7 @@ Client::Client(struct client_info* conn_conf){
 	info->object = this;
 	info->fptr = &Client::responseThread;
 	this->conn_conf = conn_conf;
-	inBuffer = (unsigned char*) malloc(WebSocket::MAX_PACKAGE_SIZE);
+	inBuffer = (unsigned char*) malloc(WebSocket::MAX_PACKAGE_SIZE+8); // +8 for decode
 	outBuffer = (unsigned char*) malloc(WebSocket::MAX_PACKAGE_SIZE);
 	res_root = res_last = NULL;
 	account_id = 0;
