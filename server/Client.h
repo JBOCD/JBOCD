@@ -174,7 +174,6 @@ class Client{
 
 // prepareStatement List
 		sql::PreparedStatement* check_user_logical_drive;
-		sql::PreparedStatement* check_token;
 		sql::PreparedStatement* get_cloud_drive_list;
 		sql::PreparedStatement* get_number_of_library;
 		sql::PreparedStatement* get_list;

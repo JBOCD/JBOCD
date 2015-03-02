@@ -143,9 +143,6 @@ void Client::prepareStatement(){
 	//	used in permission checking
 	check_user_logical_drive = MySQL::getCon()->prepareStatement("SELECT * FROM `logicaldriveinfo` WHERE `ldid`=? AND `uid`=?");
 
-	//	used in 0x00, 0x01
-	check_token = MySQL::getCon()->prepareStatement("SELECT * FROM `token` WHERE `token`=? AND `id`=?");
-
 	//	used in 0x04
 	get_list = MySQL::getCon()->prepareStatement("SELECT * FROM `directory` WHERE `ldid`=? AND `parentid`=?");
 
@@ -196,35 +193,37 @@ void Client::commandInterpreter(){
 
 		// recv part
 		// should check login then do other step
-		switch(packageCode){
-			case 0x00: // ls acc req
-				Client::readLogin();
-				break;
-			case 0x02:
-				Client::readGetService();
-				break;
-			case 0x03:
-				Client::readGetDrive();
-				break;
-			case 0x04:
-				Client::readList();
-				break;
-			case 0x20:
-				Client::readCreateFile();
-				break;
-			case 0x21:
-				Client::readSaveFile();
-				break;
-			case 0x22:
-				Client::readGetFile();
-				break;
-			case 0x28:
-				Client::readDelFile();
-				break;
-			case 0x88:
-				Client::addResponseQueue(0x88, NULL);
-				isEnd = true;
-				break;
+		if(account_id > 0 || !packageCode){
+			switch(packageCode){
+				case 0x00: // ls acc req
+					Client::readLogin();
+					break;
+				case 0x02:
+					Client::readGetService();
+					break;
+				case 0x03:
+					Client::readGetDrive();
+					break;
+				case 0x04:
+					Client::readList();
+					break;
+				case 0x20:
+					Client::readCreateFile();
+					break;
+				case 0x21:
+					Client::readSaveFile();
+					break;
+				case 0x22:
+					Client::readGetFile();
+					break;
+				case 0x28:
+					Client::readDelFile();
+					break;
+				case 0x88:
+					Client::addResponseQueue(0x88, NULL);
+					isEnd = true;
+					break;
+			}
 		}
 
 	}while(!isEnd);
@@ -307,20 +306,22 @@ void Client::responseThread(void* arg){
 void Client::readLogin(){
 	struct client_list_root* info = (struct client_list_root*) MemManager::allocate(sizeof(struct client_list_root));
 	char* token = (char*) inBuffer+6;
-	sql::PreparedStatement* removeAllToken;
+	sql::PreparedStatement* pstmt;
 	sql::ResultSet *res;
 
 	token[32]=0;
 	info->operationID = *(inBuffer+1);
 	account_id = Network::toInt(inBuffer+2);
-	check_token->setString(1, token);
-	check_token->setUInt(2, account_id);
-	res = check_token->executeQuery();
+
+	pstmt = MySQL::getCon()->prepareStatement("SELECT * FROM `token` WHERE `token`=? AND `id`=?");
+	pstmt->setString(1, token);
+	pstmt->setUInt(2, account_id);
+	res = pstmt->executeQuery();
 	if(res->rowsCount() == 1){
-		removeAllToken = MySQL::getCon()->prepareStatement("DELETE FROM `token` WHERE `uid`=?");
-		removeAllToken->setUInt(1, account_id);
-		removeAllToken->executeUpdate();
-		delete removeAllToken;
+		delete pstmt;
+		pstmt = MySQL::getCon()->prepareStatement("DELETE FROM `token` WHERE `id`=?");
+		pstmt->setUInt(1, account_id);
+		pstmt->executeUpdate();
 
 		Client::updatePrepareStatementAccount();
 		Client::loadCloudDrive();
@@ -328,6 +329,7 @@ void Client::readLogin(){
 	}else{
 		account_id=0;
 	}
+	delete pstmt;
 	Client::addResponseQueue(!!account_id /* 0x00 || 0x01 */ , info);
 	delete res;
 }
