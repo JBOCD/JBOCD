@@ -135,6 +135,7 @@ class Client{
 			void (Client::*fptr)(void*);
 			unsigned char operationID;
 			unsigned int ldid;
+			unsigned long long parentid;
 			unsigned long long fileid;
 			char* name;
 		};

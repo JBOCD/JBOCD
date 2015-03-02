@@ -11,9 +11,9 @@ unsigned long long Network::toLongLong(unsigned char* in){
 	return ((((((((((((((out | in[0]) << 8 ) | in[1]) << 8 ) | in[2]) << 8 ) | in[3]) << 8) | in[4]) << 8 ) | in[5]) << 8 ) | in[6]) << 8 ) | in[7];
 }
 unsigned char* Network::toChars(unsigned char* in){
-	int len = Network::toInt(in);
+	unsigned char len = *in;
 	unsigned char * out = (unsigned char*) MemManager::allocate(len+1);
-	memcpy(out, in+4, len);
+	memcpy(out, in+1, len);
 	out[len]=0;
 	return out;
 }
@@ -47,8 +47,8 @@ void Network::toBytes(long long value, unsigned char* ptr){
 	Network::toBytes((unsigned long long) value, ptr);
 }
 void Network::toBytes(char* value, unsigned char* ptr){
-	strcpy((char*) ptr+2, value);
-	Network::toBytes((unsigned short) strlen(value), ptr);
+	strcpy((char*) ptr+1, value);
+	Network::toBytes((unsigned char) strlen(value), ptr);
 }
 int Network::getLength(short value, int len){
 	return len + 2;
@@ -60,5 +60,5 @@ int Network::getLength(long long value, int len){
 	return len + 8;
 }
 int Network::getLength(char* value, int len){
-	return len + 2 + strlen(value);
+	return len + 1 + strlen(value);
 }

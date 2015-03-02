@@ -28,7 +28,7 @@ case 0x02 00000010: server get Service
 	(
 		4 byte int: service UID
 //		8 byte int: Available Size // record not found
-//		2 byte int: service name length "n" // record not found
+//		1 byte int: service name length "n" // record not found
 //		n byte char: service name // record not found
 	)*
 
@@ -42,7 +42,7 @@ case 0x03 00000011: server get Drive
 		4 byte int: Drive ID
 		4 byte int: Algorithm ID
 		8 Byte int: Total Size
-		2 byte int: Drive name length "n"
+		1 byte int: Drive name length "n"
 		n byte char: Drive name
 		2 byte int: number of Service
 		(
@@ -62,7 +62,7 @@ case 0x04 00000100: server ls dir/file
 	(
 		8 byte int: File ID
 		8 byte int: File size
-		2 byte int: File name length "n"
+		1 byte int: File name length "n"
 		n byte char: File name
 	)*
 
@@ -73,7 +73,7 @@ case 0x20 00100000: client new directory / file
 	4 byte int: Drive ID
 	8 byte int: Parent ID
 	8 byte int: File size (always 0)
-	2 byte int: File Name length "n"
+	1 byte int: File Name length "n"
 	n byte char: File Name
 
 case 0x20 00100000: server new directory / file
@@ -86,7 +86,7 @@ case 0x21 00100001: client put
 	4 byte int: Service UID
 	8 byte int: File ID
 	4 byte int: File chunk sequence number
-	2 byte int: Remote File name length "m"
+	1 byte int: Remote File name length "m"
 	m byte char: Remote File name
 	4 byte int: send file chunk length "k"
 	k byte: File chuck Content
@@ -121,7 +121,10 @@ case 0x28 00101000: client delete
 
 case 0x28 00101000: server delete
 	1 byte int: Operation ID
-	2 byte int: file name "n"
+	4 byte int: Drive ID
+	8 byte int: Parent ID
+	8 byte int: File ID
+	1 byte int: file name "n"
 	n byte char: file name
 
 // close code,

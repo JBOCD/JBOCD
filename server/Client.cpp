@@ -519,7 +519,9 @@ void Client::readDelFile(){
 		info->object = this;
 		info->fptr = &Client::processDelFile;
 		info->operationID = *(inBuffer+1);
-		info->fileid = fileid = res->getUInt("fileid");
+		info->ldid = ldid;
+		info->parentid = res->getUInt("parentid");
+		info->fileid = fileid;
 		info->name = (char*) MemManager::allocate( strlen( res->getString("name").c_str() ) + 1 );
 		strcpy(info->name, res->getString("name")->c_str());
 
@@ -730,7 +732,7 @@ void Client::sendGetLogicalDrive(){
 		Network::toBytes(ld->algoid, outBuffer + bufferShift + 4);
 		Network::toBytes(ld->size  , outBuffer + bufferShift + 8);
 		Network::toBytes(ld->name  , outBuffer + bufferShift + 16);
-		bufferShift += 20 + strlen(ld->name);
+		bufferShift += 19 + strlen(ld->name);
 		Network::toBytes(ld->numOfCloudDrives, outBuffer + bufferShift - 2);
 		for(cd = ld->root; cd; bufferShift+=12){
 			Network::toBytes(cd->cdid, outBuffer + bufferShift);
@@ -752,9 +754,9 @@ void Client::sendList(void* a){
 	*outBuffer = 0x04;
 	*(outBuffer+1) = info->operationID;
 	Network::toBytes(info->numberOfFile, outBuffer+2);
-	while(dir){
+	for(;dir;bufferShift += 17+strlen(dir->name)){
 		// 8+8+2+n
-		if(WebSocket::willExceed(bufferShift, 18+strlen(dir->name)) ){
+		if(WebSocket::willExceed(bufferShift, 17+strlen(dir->name)) ){
 			send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift), 0);
 			bufferShift=2;
 			*outBuffer = 0x04;
@@ -836,14 +838,17 @@ void Client::sendGetFileChunk(void* a){
 	MemManager::free(info->chunkName);
 	MemManager::free(info);
 }
-// 0x24
+// 0x28
 void Client::sendDelFile(void* a){
 	struct client_del_file* info = (struct client_del_file*) a;
 	*outBuffer = 0x28;
 	*(outBuffer+1) = info->operationID;
-	Network::toBytes(info->name, outBuffer + 2);
+	Network::toBytes(info->ldid, outBuffer + 2);
+	Network::toBytes(info->parentid, outBuffer + 6);
+	Network::toBytes(info->fileid, outBuffer + 14);
+	Network::toBytes(info->name, outBuffer + 22);
 
-	send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 4+strlen(info->name)), 0);
+	send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 23+strlen(info->name)), 0);
 	MemManager::free(info->name);
 	MemManager::free(info);
 
