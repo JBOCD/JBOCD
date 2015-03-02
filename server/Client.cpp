@@ -318,7 +318,7 @@ void Client::readLogin(){
 	res = check_token->executeQuery();
 	if(res->rowsCount() == 1){
 		removeAllToken = MySQL::getCon()->prepareStatement("DELETE FROM `token` WHERE `uid`=?");
-		removeAllToken->setUint(1, account_id);
+		removeAllToken->setUInt(1, account_id);
 		removeAllToken->executeUpdate();
 		delete removeAllToken;
 
