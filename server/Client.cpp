@@ -307,6 +307,7 @@ void Client::responseThread(void* arg){
 void Client::readLogin(){
 	struct client_list_root* info = (struct client_list_root*) MemManager::allocate(sizeof(struct client_list_root));
 	char* token = (char*) inBuffer+6;
+	sql::PreparedStatement* removeAllToken;
 	sql::ResultSet *res;
 
 	token[32]=0;
@@ -316,6 +317,11 @@ void Client::readLogin(){
 	check_token->setUInt(2, account_id);
 	res = check_token->executeQuery();
 	if(res->rowsCount() == 1){
+		removeAllToken = MySQL::getCon()->prepareStatement("DELETE FROM `token` WHERE `uid`=?");
+		removeAllToken->setUint(1, account_id);
+		removeAllToken->executeUpdate();
+		delete removeAllToken;
+
 		Client::updatePrepareStatementAccount();
 		Client::loadCloudDrive();
 		Client::loadLogicalDrive();
