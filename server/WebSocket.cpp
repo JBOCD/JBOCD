@@ -128,43 +128,35 @@ int WebSocket::close(unsigned char* buf){
 }
 
 void WebSocket::decode(unsigned char* in, unsigned char* out, unsigned char* maskKey, int len){
-	unsigned char tmp[4];
-// Large fast decode is in comment
-// only for 64bit CPU
-// ps: not firm
-/*
+//	unsigned char tmp[4];
 	unsigned long long* inLL = (unsigned long long*) in;
 	unsigned long long* outLL = (unsigned long long*) out;
 	unsigned long long maskKeyLL;
 	memcpy( ((void*) &maskKeyLL)    , maskKey, 4);
 	memcpy( ((void*) &maskKeyLL) + 4, maskKey, 4);
-*/
-//	int i=0, j=len/8;
-	int i=0, j=len/4;
-//	for(;i<j;i++,inLL++,outLL++){
-	for(;i<j;i++){
-//		*outLL = *inLL ^ maskKeyLL;
+	int i=0, j=len/8;
+//	int i=0, j=len/4;
+	for(;i<j;i++,inLL++,outLL++){
+//	for(;i<j;i++){
+		*outLL = *inLL ^ maskKeyLL;
+/*
 		out[0] = in[0] ^ maskKey[0];
 		out[1] = in[1] ^ maskKey[1];
 		out[2] = in[2] ^ maskKey[2];
 		out[3] = in[3] ^ maskKey[3];
 
 		out+=4;	in+=4;
+*/
 	}
-//	j=len%8;
-//	out = (unsigned char*) outLL;
-//	in = (unsigned char*) inLL;
-//	if(j > 4){
-//		out[0] = in[0] ^ maskKey[0];
-//		out[1] = in[1] ^ maskKey[1];
-//		out[2] = in[2] ^ maskKey[2];
-//		out[3] = in[3] ^ maskKey[3];
-//
-//		out+=4;	in+=4;
-//		j-=4;
-//	}
-	j=len%4;
-//	for(i=0;i<8;i++){
+	j=len%8;
+	out = (unsigned char*) outLL;
+	in = (unsigned char*) inLL;
+/*
+	if(j > 4){
+		*((int*) out) = *((int*)in) ^ (int)maskKeyLL;
+		out+=4;	in+=4;
+		j-=4;
+	}
 	for(i=0;i<4;i++){
 		if(i<j){
 			tmp[i+(4-j)] = maskKey[i];
@@ -173,8 +165,26 @@ void WebSocket::decode(unsigned char* in, unsigned char* out, unsigned char* mas
 			tmp[i-j] = maskKey[i];
 		}
 	}
-	for(i=0;i<4;i++){
-		maskKey[i]=tmp[i];
+	memcpy( maskKey, tmp, 4);
+*/
+	switch(j){
+		case 7:
+			out[6] = in[6] ^ maskKey[2];
+		case 6:
+			out[5] = in[5] ^ maskKey[1];
+		case 5:
+			out[4] = in[4] ^ maskKey[0];
+		case 4:
+			out[3] = in[3] ^ maskKey[3];
+		case 3:
+			out[2] = in[2] ^ maskKey[2];
+		case 2:
+			out[1] = in[1] ^ maskKey[1];
+		case 1:
+			j=len%4;
+			out[0] = in[0] ^ maskKey[0];
+			memcpy( maskKey, ((void*)&maskKeyLL)+j, 4-j);
+			memcpy( maskKey+4-j, (void*)&maskKeyLL, j);
 	}
 }
 
