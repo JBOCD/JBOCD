@@ -132,8 +132,8 @@ void WebSocket::decode(unsigned char* in, unsigned char* out, unsigned char* mas
 	unsigned long long* inLL = (unsigned long long*) in;
 	unsigned long long* outLL = (unsigned long long*) out;
 	unsigned long long maskKeyLL;
-	memcpy( ((void*) &maskKeyLL)    , maskKey, 4);
-	memcpy( ((void*) &maskKeyLL) + 4, maskKey, 4);
+	memcpy(                   &maskKeyLL     , maskKey, 4);
+	memcpy( ((unsigned char*) &maskKeyLL) + 4, maskKey, 4);
 	int i=0, j=len/8;
 //	int i=0, j=len/4;
 	for(;i<j;i++,inLL++,outLL++){
@@ -183,8 +183,8 @@ void WebSocket::decode(unsigned char* in, unsigned char* out, unsigned char* mas
 		case 1:
 			j=len%4;
 			out[0] = in[0] ^ maskKey[0];
-			memcpy( maskKey, ((void*)&maskKeyLL)+j, 4-j);
-			memcpy( maskKey+4-j, (void*)&maskKeyLL, j);
+			memcpy( maskKey    , ((unsigned char*)&maskKeyLL)+j, 4-j);
+			memcpy( maskKey+4-j,                  &maskKeyLL   , j  );
 	}
 }
 
