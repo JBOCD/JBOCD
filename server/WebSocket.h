@@ -24,7 +24,7 @@ class WebSocket{
 		static const int ERR_WRONG_WS_PROTOCOL;
 
 		static int MAX_PACKAGE_SIZE;
-		static int MAX_CONTENT_SIZE;
+		static int MAX_BUFFER_SIZE;
 
 		static void init();
 		static int  getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err);						// return buffer size, err return error code, request == buf is safe

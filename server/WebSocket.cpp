@@ -1,7 +1,10 @@
 void WebSocket::init(){
 	MAX_PACKAGE_SIZE = json_object_get_int(Config::get("socket.maxPackageSize"));
-	if(MAX_PACKAGE_SIZE < 1024){ // no less than 1KB
+	if(MAX_PACKAGE_SIZE >= 1024){ // no less than 1KB
+		MAX_BUFFER_SIZE = MAX_PACKAGE_SIZE + 8;
+	}else{
 		MAX_PACKAGE_SIZE = 1024;
+		MAX_BUFFER_SIZE = 1032;
 	}
 }
 
