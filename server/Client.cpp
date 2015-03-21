@@ -167,7 +167,7 @@ void Client::updatePrepareStatementAccount(){
 
 void Client::doHandshake(){
 //	if not using websocket, how to confirm message exact size in our protocol?
-	SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE, 0);
+	SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE);
 	SecureSocket::send(outBuffer, WebSocket::getHandShakeResponse(inBuffer, outBuffer, &err));
 }
 
@@ -178,7 +178,7 @@ void Client::commandInterpreter(){
 	readLen = recvLen = 0;
 
 	do{
-		readLen = WebSocket::getMsg(inBuffer, SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE), false, &recvLen, maskKey, &err); // the first message should not be continue
+		readLen = WebSocket::parseMsg(inBuffer, SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE), false, &recvLen, maskKey, &err); // the first message should not be continue
 		// err handling
 		if(err & WebSocket::ERR_VER_MISMATCH) printf("WebSocket Version not match.\n");
 		if(err & WebSocket::ERR_NOT_WEBSOCKET) printf("Connection is not WebScoket.\n");
@@ -694,7 +694,7 @@ void Client::sendGetCloudDrive(){
 	Network::toBytes(cd_root->numOfCloudDrives, outBuffer+2);
 	for(int i=0; cd[i]; bufferShift+=4, i++){
 		if(WebSocket::willExceed(bufferShift,4)){
-			SecureSocket::sendoutBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift));
+			SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift));
 			bufferShift=2;
 			*outBuffer = 0x02;
 			*(outBuffer+1) = cd_root->operationID;

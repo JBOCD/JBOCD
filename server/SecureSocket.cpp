@@ -2,8 +2,8 @@ void SecureSocket::init(){
 	int counter = 0;
 
 	SSL_library_init();
-	OpenSSL_add_all_algorithms();  /* load & register all cryptos, etc. */
-	SSL_load_error_strings();   /* load all error messages */
+	OpenSSL_add_all_algorithms(); /* load & register all cryptos, etc. */
+	SSL_load_error_strings(); /* load all error messages */
 	
 
 	ctx = SSL_CTX_new(SSLv23_server_method());
@@ -34,11 +34,11 @@ void SecureSocket::init(){
 
 	if(ctx){
 		// load cert if ssl 
-		if(SSL_CTX_use_certificate_file(ctx, json_object_get_string(Config::get("socket.secure.certificate"), SSL_FILETYPE_PEM) <= 0){
+		if(SSL_CTX_use_certificate_file(ctx, json_object_get_string(Config::get("socket.secure.certificate")), SSL_FILETYPE_PEM) <= 0){
 			ERR_print_errors_fp(stderr);
 			exit(EXIT_FAILURE);
 		}
-		if(SSL_CTX_use_PrivateKey_file(ctx, json_object_get_string(Config::get("socket.secure.privateKey"), SSL_FILETYPE_PEM) <= 0){
+		if(SSL_CTX_use_PrivateKey_file(ctx, json_object_get_string(Config::get("socket.secure.privateKey")), SSL_FILETYPE_PEM) <= 0){
 			ERR_print_errors_fp(stderr);
 			exit(EXIT_FAILURE);
 		}
@@ -87,7 +87,8 @@ void SecureSocket::close(){
 	if(ctx){
 		SSL_free(ssl);
 		SSL_CTX_free(ctx);
-		ssl = ctx = NULL;
+		ctx = NULL;
+		ssl = NULL;
 	}
 	::close(conn);
 }

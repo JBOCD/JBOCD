@@ -29,10 +29,10 @@ class SecureSocket{
 		SecureSocket();
 	public:
 		static void init();
-		static void startConn();
+		static void startConn(int client_conn);
 		static int recv(void *buf, int num);
 		static int send(const void *buf, int num);
-		static void SecureSocket::close();
+		static void close();
 };
 SSL_CTX *SecureSocket::ctx = NULL;
 SSL *SecureSocket::ssl = NULL;
