@@ -34,8 +34,8 @@
 		//			10 Bytes (for size between 65536 and 2^64-1 )
 		"maxPackageSize": 5244320,
 		"secure": {
-			"certificate": "/var/JBOCD/certificate.pem",
-			"privateKey": "/var/JBOCD/privateKey.pem",
+			"certificate": "/etc/JBOCD/certificate.pem",
+			"privateKey": "/etc/JBOCD/privateKey.pem",
 			// if all set to false, it will use unsecure way to send a packet
 			"useSSLv3": false,
 			"useTLSv1": false,
