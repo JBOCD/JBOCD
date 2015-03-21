@@ -1,6 +1,7 @@
 #include <cstdio>
 
 #include "Config.h"
+#include "SecureSocket.h"
 #include "MemManager.h"
 #include "FileManager.h"
 #include "Network.h"
@@ -12,6 +13,9 @@ using namespace std;
 
 int main() {
 	Config::init();
+
+	// SSL/TLS connection handler
+	SecureSocket::init();
 
 	// init Memory Manager
 	MemManager::init();

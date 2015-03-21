@@ -41,15 +41,17 @@ Server::Server(){
 						// child
 						close(sockfd); // close listen
 						signal(SIGUSR1, &Server::_server_close); // Set signal handler when server close
+						
+						SecureSocket::startConn(client_conf->connfd);
 
 						// connect to DB
 						MySQL::init();
 
 						// create tmpfile pool
 						FileManager::newProcess();
-						new Client(client_conf);
+						new Client();
 						FileManager::endProcess();
-						close(client_conf->connfd);
+						SecureSocket::close();
 						exit(0);
 					default:
 						conn_count++;

@@ -28,7 +28,7 @@ class WebSocket{
 
 		static void init();
 		static int  getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err);						// return buffer size, err return error code, request == buf is safe
-		static int  getMsg(int fd, unsigned char* buf, int size, bool isContinue, long long* payloadLen, unsigned char* maskKey, int* err);	// return buffer size, err return error code
+		static int  parseMsg(unsigned char* buf, int readLen, bool isContinue, long long* payloadLen, unsigned char* maskKey, int* err);	// return buffer size, err return error code
 		static int  sendMsg(unsigned char* buf, unsigned char* msg, long long len);									// return buffer size
 		static int  close(unsigned char* buf);																		// return buffer size
 		static bool willExceed(unsigned long long curLen, unsigned long long addLen);

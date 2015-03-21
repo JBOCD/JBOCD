@@ -32,7 +32,16 @@
 		//			 2 Bytes (for size between 0 and 125 )
 		//			 4 Bytes (for size between 126 and 65535 )
 		//			10 Bytes (for size between 65536 and 2^64-1 )
-		"maxPackageSize": 5244320
+		"maxPackageSize": 5244320,
+		"secure": {
+			"certificate": "/var/JBOCD/certificate.pem",
+			"privateKey": "/var/JBOCD/privateKey.pem",
+			// if all set to false, it will use unsecure way to send a packet
+			"useSSLv3": false,
+			"useTLSv1": false,
+			"useTLSv1.1": false,
+			"useTLSv1.2": false
+		}
 	},
 	"file":{
 		"temp":{

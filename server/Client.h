@@ -140,7 +140,6 @@ class Client{
 			char* name;
 		};
 
-		struct client_info* conn_conf;
 		pthread_t responseThread_tid;
 
 // Client Info
@@ -160,7 +159,6 @@ class Client{
 // WebSocket
 		CDDriver ** tmpCDD;
 		int err;
-		bool isCont;
 		unsigned char maskKey[4];
 		unsigned char* inBuffer;
 		unsigned char* outBuffer;
@@ -221,7 +219,7 @@ class Client{
 		void sendGetFileChunk(void* a);
 		void sendDelFile(void* a);
 	public:
-		Client(struct client_info*);
+		Client();
 		static void _client_close(int signum);
 		static void* _thread_redirector(void* arg);
 };

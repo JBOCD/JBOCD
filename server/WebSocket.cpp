@@ -54,10 +54,9 @@ int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, 
 
 	return 160;
 }
-int WebSocket::getMsg(int fd, unsigned char* buf, int size, bool isContinue,  long long* payloadLen, unsigned char* maskKey, int* err){
+int WebSocket::parseMsg(unsigned char* buf, int readLen, bool isContinue,  long long* payloadLen, unsigned char* maskKey, int* err){
 	// isContinue ? MSG_DONTWAIT : 0
 	// it should be wait for slow network
-	int readLen = recv(fd, buf, size, 0); 
 	*err = ERR_NO_ERR;
 	if(readLen && isContinue){
 		// continue read

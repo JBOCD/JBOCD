@@ -1,8 +1,7 @@
-Client::Client(struct client_info* conn_conf){
+Client::Client(){
 	struct client_thread_director* info = (struct client_thread_director*) MemManager::allocate(sizeof(struct client_thread_director));
 	info->object = this;
 	info->fptr = &Client::responseThread;
-	this->conn_conf = conn_conf;
 	inBuffer = (unsigned char*) malloc(WebSocket::MAX_BUFFER_SIZE); // +8 for decode
 	outBuffer = (unsigned char*) malloc(WebSocket::MAX_BUFFER_SIZE);
 	res_root = res_last = NULL;
@@ -168,33 +167,28 @@ void Client::updatePrepareStatementAccount(){
 
 void Client::doHandshake(){
 //	if not using websocket, how to confirm message exact size in our protocol?
-	recv(conn_conf->connfd, inBuffer, WebSocket::MAX_PACKAGE_SIZE, 0);
-	write(conn_conf->connfd, outBuffer, WebSocket::getHandShakeResponse(inBuffer, outBuffer, &err));
+	SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE, 0);
+	SecureSocket::send(outBuffer, WebSocket::getHandShakeResponse(inBuffer, outBuffer, &err));
 }
 
 void Client::commandInterpreter(){
 
-	unsigned char packageCode;
 	bool isEnd = false;
 
 	readLen = recvLen = 0;
-	isCont = isEnd = false; // if recvLen != readLen, then isCont == true, it mean it continue to read;
 
 	do{
-		readLen = WebSocket::getMsg(conn_conf->connfd, inBuffer, isCont && (WebSocket::MAX_PACKAGE_SIZE > recvLen)? recvLen : WebSocket::MAX_PACKAGE_SIZE, isCont, &recvLen, maskKey, &err);
+		readLen = WebSocket::getMsg(inBuffer, SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE), false, &recvLen, maskKey, &err); // the first message should not be continue
 		// err handling
 		if(err & WebSocket::ERR_VER_MISMATCH) printf("WebSocket Version not match.\n");
 		if(err & WebSocket::ERR_NOT_WEBSOCKET) printf("Connection is not WebScoket.\n");
 		if(err & WebSocket::ERR_WRONG_WS_PROTOCOL) printf("WebSocket Protocol Error, Client Package have no mask.\n");
 		if(err) break;
 
-		// protocol part
-		if(!isCont)	packageCode = *inBuffer;
-
 		// recv part
 		// should check login then do other step
-		if(account_id > 0 || !packageCode){
-			switch(packageCode){
+		if(account_id > 0 || !*inBuffer){
+			switch(*inBuffer){
 				case 0x00: // ls acc req
 					Client::readLogin();
 					break;
@@ -228,7 +222,7 @@ void Client::commandInterpreter(){
 
 	}while(!isEnd);
 	pthread_mutex_lock(&client_end_mutex);
-	pthread_mutex_lock(&client_end_mutex);
+	pthread_mutex_lock(&client_end_mutex); // waiting responseThread end
 }
 
 /* resposne function */
@@ -287,7 +281,7 @@ void Client::responseThread(void* arg){
 						Client::sendDelFile(tmp->info);
 						break;
 					case 0x88:
-						send(conn_conf->connfd, outBuffer, WebSocket::close(outBuffer), 0);
+						SecureSocket::send(outBuffer, WebSocket::close(outBuffer));
 						isEnd = true;
 						break;
 				}
@@ -440,16 +434,15 @@ void Client::readSaveFile(){
 	maxSaveSize -= readLen - bufShift;
 	// check whether this call will have some security problem
 	while(recvLen && maxSaveSize > 0 && maxSaveSize < info->chunkSize){
-		readLen = WebSocket::getMsg(conn_conf->connfd, inBuffer, WebSocket::MAX_PACKAGE_SIZE > recvLen ? recvLen : WebSocket::MAX_PACKAGE_SIZE, true, &recvLen, maskKey, &err);
+		readLen = WebSocket::parseMsg(inBuffer, SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE > recvLen ? recvLen : WebSocket::MAX_PACKAGE_SIZE), true, &recvLen, maskKey, &err);
 		write(fd, inBuffer, maxSaveSize > readLen ? readLen : maxSaveSize);
 		maxSaveSize -= readLen;
 	}
 	close(fd);
 
 	while(recvLen > 0){
-		WebSocket::getMsg(conn_conf->connfd, inBuffer, WebSocket::MAX_PACKAGE_SIZE > recvLen ? recvLen : WebSocket::MAX_PACKAGE_SIZE, true, &recvLen, maskKey, &err);
+		recvLen -= SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE > recvLen ? recvLen : WebSocket::MAX_PACKAGE_SIZE);
 	}
-	isCont = false;
 
 	check_user_logical_drive->setInt(1, info->ldid);
 	res = check_user_logical_drive->executeQuery();
@@ -687,7 +680,7 @@ void Client::sendLogin(unsigned char command, void* a){
 	struct client_list_root* info = (struct client_list_root*) a;
 	*outBuffer = command;
 	*(outBuffer+1) = info->operationID;
-	send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 2), 0);
+	SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 2));
 	MemManager::free(info);
 }
 
@@ -701,14 +694,14 @@ void Client::sendGetCloudDrive(){
 	Network::toBytes(cd_root->numOfCloudDrives, outBuffer+2);
 	for(int i=0; cd[i]; bufferShift+=4, i++){
 		if(WebSocket::willExceed(bufferShift,4)){
-			send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift), 0);
+			SecureSocket::sendoutBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift));
 			bufferShift=2;
 			*outBuffer = 0x02;
 			*(outBuffer+1) = cd_root->operationID;
 		}
 		Network::toBytes(cd[i]->getID(), outBuffer + bufferShift);
 	}
-	send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift), 0);
+	SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift));
 }
 
 // 0x03
@@ -723,7 +716,7 @@ void Client::sendGetLogicalDrive(){
 	while(ld){
 		// 4+4+8+2+n+2+(4+8)*numOfCloudDrives
 		if( WebSocket::willExceed(bufferShift, 20+strlen(ld->name)+12*ld->numOfCloudDrives) ){
-			send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift), 0);
+			SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift));
 			bufferShift=2;
 			*outBuffer = 0x03;
 			*(outBuffer+1) = ld_root->operationID;
@@ -743,7 +736,7 @@ void Client::sendGetLogicalDrive(){
 		ld = ld->next;
 		// no need free "ld"
 	}
-	send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift), 0);
+	SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift));
 }
 
 // 0x04
@@ -757,7 +750,7 @@ void Client::sendList(void* a){
 	for(;dir;bufferShift += 17+strlen(dir->name)){
 		// 8+8+2+n
 		if(WebSocket::willExceed(bufferShift, 17+strlen(dir->name)) ){
-			send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift), 0);
+			SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift));
 			bufferShift=2;
 			*outBuffer = 0x04;
 			*(outBuffer+1) = info->operationID;
@@ -769,7 +762,7 @@ void Client::sendList(void* a){
 		dir = dir->next;
 		MemManager::free(a);
 	}
-	send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift), 0);
+	SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift));
 	MemManager::free(info);
 }
 
@@ -779,7 +772,7 @@ void Client::sendCreateFile(void* a){
 	*outBuffer = 0x20;
 	*(outBuffer+1) = info->operationID;
 	Network::toBytes(info->fileid, outBuffer+2);
-	send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 10), 0);
+	SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 10));
 	MemManager::free(info);
 }
 // 0x21
@@ -791,7 +784,7 @@ void Client::sendSaveFile(void* a){
 	*(outBuffer+6) = info->isInsertOK;
 	Network::toBytes(info->chunkSize, outBuffer + 7);
 
-	send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 11), 0);
+	SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 11));
 
 	FileManager::deleteTemp(info->tmpFile);
 	MemManager::free(info->remoteName);
@@ -804,7 +797,7 @@ void Client::sendGetFileInfo(void* a){
 	*(outBuffer+1) = info->operationID;
 	Network::toBytes(info->num_of_chunk, outBuffer + 2);
 
-	send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 6), 0);
+	SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 6));
 	MemManager::free(info);
 }
 // 0x23
@@ -824,15 +817,15 @@ void Client::sendGetFileChunk(void* a){
 			if(readBytes >= 0){
 				totalReadBytes += readBytes;
 				Network::toBytes(readBytes, outBuffer + 10);
-				send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, readBytes+14), 0);
+				SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, readBytes+14));
 			}else{
-				send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 14), 0);
+				SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 14));
 			}
 			Network::toBytes(totalReadBytes, outBuffer + 6);
 		}while(maxRead == readBytes);
 		close(fd);
 	}else{
-		send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 14), 0);
+		SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 14));
 	}
 	FileManager::deleteTemp(info->tmpFile);
 	MemManager::free(info->chunkName);
@@ -848,7 +841,7 @@ void Client::sendDelFile(void* a){
 	Network::toBytes(info->fileid, outBuffer + 14);
 	Network::toBytes(info->name, outBuffer + 22);
 
-	send(conn_conf->connfd, outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 23+strlen(info->name)), 0);
+	SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 23+strlen(info->name)));
 	MemManager::free(info->name);
 	MemManager::free(info);
 
