@@ -56,8 +56,7 @@ void SecureSocket::startConn(int client_conn){
 		SSL_set_fd(ssl, client_conn);
 		if(SSL_accept(ssl) == -1){
 			ERR_print_errors_fp(stderr);
-			SSL_free(ssl);
-			close(client_conn);
+			close();
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -67,7 +66,7 @@ int SecureSocket::send(const void *buf, int num){
 	return (*fun)(buf, num);
 }
 int SecureSocket::recv(void *buf, int num){
-	static int (*fun)(const void *buf, int num) = ssl ? &Secure_recv : &NON_Secure_recv;
+	static int (*fun)(void *buf, int num) = ssl ? &Secure_recv : &NON_Secure_recv;
 	return (*fun)(buf, num);
 }
 int SecureSocket::Secure_send(const void *buf, int num){
@@ -80,7 +79,7 @@ int SecureSocket::Secure_recv(void *buf, int num){
 	return SSL_read(ssl, buf, num);
 }
 int SecureSocket::NON_Secure_recv(void *buf, int num){
-	return ::recv(conn, buf, num);
+	return ::recv(conn, buf, num, 0);
 }
 
 void SecureSocket::close(){
