@@ -156,7 +156,7 @@ cp -r server $TEMP/server
 
 echo Compiling JBOCD
 cd $TEMP/server
-make clean BUILD=$BUILD; make BUILD=$BUILD
+sudo make clean BUILD=$BUILD; sudo make BUILD=$BUILD
 
 echo Setting up JBOCD
 [ ! -d /etc/JBOCD ] && sudo mkdir /etc/JBOCD

@@ -40,7 +40,7 @@
 			"useSSLv3": false,
 			"useTLSv1": false,
 			"useTLSv1.1": false,
-			"useTLSv1.2": false
+			"useTLSv1.2": true
 		}
 	},
 	"file":{
