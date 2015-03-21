@@ -9,14 +9,14 @@ void WebSocket::init(){
 }
 
 int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err){
-	int len = 0;
+	int len = strlen((char*)request);
 	char* buf_1 = new char[28];
 	char* buf_2 = new char[512];
 	char* wsa = new char[28];
 	int tmp;
 	bool isHandle = false;
 	err && (*err = ERR_NO_ERR);
-	while(sscanf((char*)request, "%[^:\r]: %s\r\n",buf_1,buf_2) > 0){
+	while(sscanf((char*)request, "%27[^:\r]: %511s\r\n",buf_1,buf_2) > 0){
 		switch(*buf_1){
 			case 'S':
 				if(sscanf(buf_1, "Sec-WebSocket-%s", buf_1)){
@@ -36,12 +36,13 @@ int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, 
 				}
 				break;
 		}
-		while(1){
+		while(len){
 			if(*request == '\r' && *(request+1) == '\n'){
 				request+=2;
 				break;
 			}
 			request++;
+			len--;
 		}
 	}
 	isHandle
