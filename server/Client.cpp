@@ -183,7 +183,11 @@ void Client::commandInterpreter(){
 		if(err & WebSocket::ERR_VER_MISMATCH) printf("WebSocket Version not match.\n");
 		if(err & WebSocket::ERR_NOT_WEBSOCKET) printf("Connection is not WebScoket.\n");
 		if(err & WebSocket::ERR_WRONG_WS_PROTOCOL) printf("WebSocket Protocol Error, Client Package have no mask.\n");
-		if(err) break;
+		if(err || !readLen){
+			Client::addResponseQueue(0x88, NULL);
+			printf("Socket Closed. (PID == %d)\n", getpid());
+			break;
+		}
 
 		// recv part
 		// should check login then do other step

@@ -1,5 +1,5 @@
 void SecureSocket::init(){
-	int counter = 0;
+	int counter = 3;
 
 	SSL_library_init();
 	OpenSSL_add_all_algorithms(); /* load & register all cryptos, etc. */
@@ -11,23 +11,20 @@ void SecureSocket::init(){
 			ERR_print_errors_fp(stderr);
 			exit(EXIT_FAILURE);
 	}
-	if(!json_object_get_boolean(Config::get("socket.secure.useSSLv3"))){
-		SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3);
-		counter++;
-	}
+	SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3);
 	if(!json_object_get_boolean(Config::get("socket.secure.useTLSv1"))){
 		SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
-		counter++;
+		counter--;
 	}
 	if(!json_object_get_boolean(Config::get("socket.secure.useTLSv1.1"))){
 		SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_1);
-		counter++;
+		counter--;
 	}
 	if(!json_object_get_boolean(Config::get("socket.secure.useTLSv1.2"))){
 		SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_2);
-		counter++;
+		counter--;
 	}
-	if(counter >= 4){
+	if(!counter){
 		SSL_CTX_free(ctx);
 		ctx = NULL;
 	}
@@ -54,7 +51,7 @@ void SecureSocket::startConn(int client_conn){
 	if(ctx){
 		ssl = SSL_new(ctx);
 		SSL_set_fd(ssl, client_conn);
-		if(SSL_accept(ssl) == -1){
+		if(SSL_accept(ssl) != 1){
 			ERR_print_errors_fp(stderr);
 			close();
 			exit(EXIT_FAILURE);
