@@ -41,7 +41,7 @@ Server::Server(){
 						// child
 						close(sockfd); // close listen
 						signal(SIGUSR1, &Server::_server_close); // Set signal handler when server close
-						
+
 						SecureSocket::startConn(client_conf->connfd);
 
 						// connect to DB

@@ -181,7 +181,6 @@ void Client::commandInterpreter(){
 		readLen = SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE);
 		if(!readLen){
 			Client::addResponseQueue(0x88, NULL);
-			printf("Socket Closed. (PID == %d)\n", getpid());
 			break;
 		}
 		readLen = WebSocket::parseMsg(inBuffer, readLen, false, &recvLen, maskKey, &err); // the first message should not be continue
@@ -191,7 +190,6 @@ void Client::commandInterpreter(){
 		if(err & WebSocket::ERR_WRONG_WS_PROTOCOL) printf("WebSocket Protocol Error, Client Package have no mask.\n");
 		if(err){
 			Client::addResponseQueue(0x88, NULL);
-			printf("Socket Closed. (PID == %d)\n", getpid());
 			break;
 		}
 

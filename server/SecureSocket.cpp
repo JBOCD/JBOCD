@@ -6,12 +6,13 @@ void SecureSocket::init(){
 	SSL_load_error_strings(); /* load all error messages */
 	
 
-	ctx = SSL_CTX_new(SSLv23_server_method());
+	ctx = SSL_CTX_new(TLSv1_1_server_method());
 	if ( !ctx ){
 			ERR_print_errors_fp(stderr);
 			exit(EXIT_FAILURE);
 	}
-	SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3);
+/*
+//	SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3);
 	if(!json_object_get_boolean(Config::get("socket.secure.useTLSv1"))){
 		SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
 		counter--;
@@ -28,7 +29,7 @@ void SecureSocket::init(){
 		SSL_CTX_free(ctx);
 		ctx = NULL;
 	}
-
+*/
 	if(ctx){
 		// load cert if ssl 
 		if(SSL_CTX_use_certificate_file(ctx, json_object_get_string(Config::get("socket.secure.certificate")), SSL_FILETYPE_PEM) <= 0){
@@ -52,9 +53,17 @@ void SecureSocket::startConn(int client_conn){
 		ssl = SSL_new(ctx);
 		SSL_set_fd(ssl, client_conn);
 		if(SSL_accept(ssl) != 1){
+
 			ERR_print_errors_fp(stderr);
 			close();
 			exit(EXIT_FAILURE);
+		}
+		X509 *cert;
+		cert = SSL_get_peer_certificate(ssl);
+		if(cert == NULL){
+			printf("No Certificates.\n");
+		}else{
+			printf("Server Certificates:\nSubject: %s\nIssuer: %s\n", X509_NAME_oneline(X509_get_subject_name(cert), 0, 0), X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0));
 		}
 	}
 }
