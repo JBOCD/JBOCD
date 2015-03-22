@@ -70,11 +70,11 @@ void SecureSocket::startConn(int client_conn){
 	}
 }
 int SecureSocket::send(const void *buf, int num){
-	static int (*fun)(const void *buf, int num) = ssl ? &Secure_send : &NON_Secure_send;
+	static int (* const fun)(const void *buf, int num) = ssl ? &Secure_send : &NON_Secure_send;
 	return (*fun)(buf, num);
 }
 int SecureSocket::recv(void *buf, int num){
-	static int (*fun)(void *buf, int num) = ssl ? &Secure_recv : &NON_Secure_recv;
+	static int (* const fun)(void *buf, int num) = ssl ? &Secure_recv : &NON_Secure_recv;
 	return (*fun)(buf, num);
 }
 int SecureSocket::Secure_send(const void *buf, int num){
