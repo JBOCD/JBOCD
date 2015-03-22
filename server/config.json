@@ -11,14 +11,14 @@
 	"database":{
 		"MySQL":{
 			"host":"localhost",
-			"port":"9443",
+			"port":"3306",
 			"user":"JBOCDuser",
 			"pass":"JBOCDpass",
 			"dbname":"jbocd"
 		}
 	},
 	"server":{
-		"port":3389,
+		"port":9443,
 		"maxActiveClient":1000, // Server will reject any coming client if there is "maxClient" active connection
 		"maxWaitClient":10, // Server only have "maxWaitClient" waiting for accept
 		"bindRetryInterval":1, // unit: second
