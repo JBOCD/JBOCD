@@ -10,8 +10,8 @@
 {
 	"database":{
 		"MySQL":{
-			"host":"192.168.50.63",
-			"port":"3306",
+			"host":"localhost",
+			"port":"9443",
 			"user":"JBOCDuser",
 			"pass":"JBOCDpass",
 			"dbname":"jbocd"
