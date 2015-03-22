@@ -313,7 +313,7 @@ void Client::readLogin(){
 	sql::PreparedStatement* pstmt;
 	sql::ResultSet *res;
 
-	token[32]=0;
+	token[128]=0;
 	info->operationID = *(inBuffer+1);
 	account_id = Network::toInt(inBuffer+2);
 
