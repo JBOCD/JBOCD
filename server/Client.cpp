@@ -95,13 +95,12 @@ void Client::loadLogicalDrive(){
 	get_logical_drive->setInt(1, account_id);
 	res = get_logical_drive->executeQuery();
 
-	ld_root->root = NULL;
-	ld_root->numOfLogicalDrive = res->rowsCount();
 	while(res->next()){
 		if(ld_root){
 			ld_last = ( ld_last->next = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
 		}else{
 			ld_last = ( ld_root->root = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
+			ld_root->numOfLogicalDrive = res->rowsCount();
 		}
 
 		ld_last->ldid = res->getUInt("ldid");
