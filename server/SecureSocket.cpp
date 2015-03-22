@@ -57,8 +57,6 @@ void SecureSocket::startConn(int client_conn){
 			close();
 			exit(EXIT_FAILURE);
 		}
-		recv = &Secure_recv;
-		send = &Secure_send;
 //		printf("Using %s\n", SSL_get_version(ssl));
 /*
 		X509 *cert;
@@ -69,12 +67,8 @@ void SecureSocket::startConn(int client_conn){
 			printf("Server Certificates:\nSubject: %s\nIssuer: %s\n", X509_NAME_oneline(X509_get_subject_name(cert), 0, 0), X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0));
 		}
 */
-	}else{
-		recv = &NON_Secure_recv;
-		send = &NON_Secure_send;
 	}
 }
-/*
 int SecureSocket::send(const void *buf, int num){
 	static int (*fun)(const void *buf, int num) = ssl ? &Secure_send : &NON_Secure_send;
 	return (*fun)(buf, num);
@@ -83,7 +77,6 @@ int SecureSocket::recv(void *buf, int num){
 	static int (*fun)(void *buf, int num) = ssl ? &Secure_recv : &NON_Secure_recv;
 	return (*fun)(buf, num);
 }
-*/
 int SecureSocket::Secure_send(const void *buf, int num){
 	return SSL_write(ssl, buf, num);
 }

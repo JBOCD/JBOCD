@@ -30,17 +30,13 @@ class SecureSocket{
 	public:
 		static void init();
 		static void startConn(int client_conn);
-		static int (const *recv)(void *buf, int num);
-//		static int recv(void *buf, int num);
-		static int (const *send)(const void *buf, int num);
-//		static int send(const void *buf, int num);
+		static int recv(void *buf, int num);
+		static int send(const void *buf, int num);
 		static void close();
 };
 SSL_CTX *SecureSocket::ctx = NULL;
 SSL *SecureSocket::ssl = NULL;
 int SecureSocket::conn = 0;
-int (const *recv)(void *buf, int num);
-int (const *send)(const void *buf, int num);
 
 #include "SecureSocket.cpp"
 
