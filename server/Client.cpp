@@ -323,10 +323,11 @@ void Client::readLogin(){
 	pstmt->setUInt(2, account_id);
 	res = pstmt->executeQuery();
 	if(res->rowsCount() == 1){
-		delete pstmt;
-		pstmt = MySQL::getCon()->prepareStatement("DELETE FROM `token` WHERE `id`=?");
-		pstmt->setUInt(1, account_id);
-		pstmt->executeUpdate();
+// not remove token
+//		delete pstmt;
+//		pstmt = MySQL::getCon()->prepareStatement("DELETE FROM `token` WHERE `id`=?");
+//		pstmt->setUInt(1, account_id);
+//		pstmt->executeUpdate();
 
 		Client::updatePrepareStatementAccount();
 		Client::loadCloudDrive();
