@@ -130,7 +130,7 @@ if [ ! -f ${SAVE_STEP_PATH}/lib-apt-install ]; then
 	sudo apt-get install build-essential git -y
 
 	# for web server
-	sudo apt-get install apache2 mysql-server-5.5 php5 phpmyadmin -y
+	sudo apt-get install apache2 mysql-server-5.5 php5 php5-curl phpmyadmin -y
 
 	# for json-c
 	sudo apt-get install libjson0 libjson0-dev -y
