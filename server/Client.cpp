@@ -167,7 +167,10 @@ void Client::updatePrepareStatementAccount(){
 
 void Client::doHandshake(){
 //	if not using websocket, how to confirm message exact size in our protocol?
-	SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE);
+	int packageLen = SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE);
+	if(packageLen == 1){
+		packageLen = SecureSocket::recv(inBuffer+1, WebSocket::MAX_PACKAGE_SIZE-1);
+	}
 	SecureSocket::send(outBuffer, WebSocket::getHandShakeResponse(inBuffer, outBuffer, &err));
 }
 

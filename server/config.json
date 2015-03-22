@@ -37,9 +37,9 @@
 			"certificate": "/etc/JBOCD/certificate.pem",
 			"privateKey": "/etc/JBOCD/privateKey.pem",
 			// if all set to false, it will use unsecure way to send a packet
-			"useTLSv1": false,
-			"useTLSv1.1": false,
-			"useTLSv1.2": false
+			"useTLSv1": true,
+			"useTLSv1_1": true,
+			"useTLSv1_2": true
 		}
 	},
 	"file":{

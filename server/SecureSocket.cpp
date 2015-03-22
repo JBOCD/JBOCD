@@ -4,32 +4,31 @@ void SecureSocket::init(){
 	SSL_library_init();
 	OpenSSL_add_all_algorithms(); /* load & register all cryptos, etc. */
 	SSL_load_error_strings(); /* load all error messages */
-	
 
-	ctx = SSL_CTX_new(TLSv1_1_server_method());
-	if ( !ctx ){
-			ERR_print_errors_fp(stderr);
-			exit(EXIT_FAILURE);
+	ctx = SSL_CTX_new(SSLv23_server_method());
+	if(!ctx){
+		ERR_print_errors_fp(stderr);
+		exit(EXIT_FAILURE);
 	}
-/*
-//	SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3);
-	if(!json_object_get_boolean(Config::get("socket.secure.useTLSv1"))){
-		SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
+
+
+	SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3);
+	if(!json_object_get_boolean(Config::get("socket.secure.useTLSv1_2"))){
+		SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_2);
 		counter--;
 	}
-	if(!json_object_get_boolean(Config::get("socket.secure.useTLSv1.1"))){
+	if(!json_object_get_boolean(Config::get("socket.secure.useTLSv1_1"))){
 		SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_1);
 		counter--;
 	}
-	if(!json_object_get_boolean(Config::get("socket.secure.useTLSv1.2"))){
-		SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_2);
+	if(!json_object_get_boolean(Config::get("socket.secure.useTLSv1"))){
+		SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
 		counter--;
 	}
 	if(!counter){
 		SSL_CTX_free(ctx);
 		ctx = NULL;
 	}
-*/
 	if(ctx){
 		// load cert if ssl 
 		if(SSL_CTX_use_certificate_file(ctx, json_object_get_string(Config::get("socket.secure.certificate")), SSL_FILETYPE_PEM) <= 0){
@@ -58,6 +57,8 @@ void SecureSocket::startConn(int client_conn){
 			close();
 			exit(EXIT_FAILURE);
 		}
+//		printf("Using %s\n", SSL_get_version(ssl));
+/*
 		X509 *cert;
 		cert = SSL_get_peer_certificate(ssl);
 		if(cert == NULL){
@@ -65,6 +66,7 @@ void SecureSocket::startConn(int client_conn){
 		}else{
 			printf("Server Certificates:\nSubject: %s\nIssuer: %s\n", X509_NAME_oneline(X509_get_subject_name(cert), 0, 0), X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0));
 		}
+*/
 	}
 }
 int SecureSocket::send(const void *buf, int num){
