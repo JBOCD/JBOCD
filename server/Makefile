@@ -1,5 +1,5 @@
 CFLAGS	= 
-LDFLAGS	= -ljson -lmysqlcppconn -lcrypto -lssl
+LDFLAGS	= -ljson -lmysqlcppconn -lcrypto -lssl -ldl
 
 #-lmysqlcppconn == Database connector lib
 #-lcrypto == SHA1 lib
