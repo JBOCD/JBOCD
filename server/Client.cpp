@@ -5,6 +5,9 @@ Client::Client(){
 	inBuffer = (unsigned char*) malloc(WebSocket::MAX_BUFFER_SIZE); // +8 for decode
 	outBuffer = (unsigned char*) malloc(WebSocket::MAX_BUFFER_SIZE);
 	res_root = res_last = NULL;
+	cd_root = NULL;
+	ld_root = NULL;
+
 	account_id = 0;
 
 	Client::prepareStatement();
@@ -19,128 +22,131 @@ Client::Client(){
 	Client::commandInterpreter();
 }
 void Client::loadCloudDrive(){
-	sql::PreparedStatement* get_cloud_drive_list = MySQL::getCon()->prepareStatement("SELECT `a`.`cdid` as `cdid`, `a`.`lid` as `lid`, `b`.`dir` as `classname` FROM `clouddrive` as `a`, `libraries` as `b` WHERE `a`.`uid`=? AND `a`.`lid`=`b`.`id`");
-	sql::PreparedStatement* get_number_of_library = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT COUNT(DISTINCT `lid`) FROM `clouddrive` WHERE `uid`=?),0) as `num_of_lib`");
-	sql::ResultSet* res;
-	sql::ResultSet* res1;
-	sql::Statement* stmt;
+	if(!cd_root){
+		sql::PreparedStatement* get_cloud_drive_list = MySQL::getCon()->prepareStatement("SELECT `a`.`cdid` as `cdid`, `a`.`lid` as `lid`, `b`.`dir` as `classname` FROM `clouddrive` as `a`, `libraries` as `b` WHERE `a`.`uid`=? AND `a`.`lid`=`b`.`id`");
+		sql::PreparedStatement* get_number_of_library = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT COUNT(DISTINCT `lid`) FROM `clouddrive` WHERE `uid`=?),0) as `num_of_lib`");
+		sql::ResultSet* res;
+		sql::ResultSet* res1;
+		sql::Statement* stmt;
 
-	unsigned int cdid;
-	unsigned int lid;
-	char* classname = (char*) MemManager::allocate(256);
-	char* tmpStr = (char*) MemManager::allocate(512);
-	char *error;
-	int j;
+		unsigned int cdid;
+		unsigned int lid;
+		char* classname = (char*) MemManager::allocate(256);
+		char* tmpStr = (char*) MemManager::allocate(512);
+		char *error;
+		int j;
 
-	stmt = MySQL::getCon()->createStatement();
+		stmt = MySQL::getCon()->createStatement();
 
-	get_number_of_library->setInt(1, account_id);
-	res = get_number_of_library->executeQuery();
+		get_number_of_library->setInt(1, account_id);
+		res = get_number_of_library->executeQuery();
 
-	if(res->next()){
-		cd_handler = (struct clouddriver_handler_list*) MemManager::allocate(sizeof(struct clouddriver_handler_list) * (res->getInt("num_of_lib") + 1));
-		memset(cd_handler, 0, sizeof(struct clouddriver_handler_list) * (res->getInt("num_of_lib") + 1));
-		delete res;
+		if(res->next()){
+			cd_handler = (struct clouddriver_handler_list*) MemManager::allocate(sizeof(struct clouddriver_handler_list) * (res->getInt("num_of_lib") + 1));
+			memset(cd_handler, 0, sizeof(struct clouddriver_handler_list) * (res->getInt("num_of_lib") + 1));
+			delete res;
 
-		get_cloud_drive_list->setInt(1, account_id);
-		res = get_cloud_drive_list->executeQuery();
+			get_cloud_drive_list->setInt(1, account_id);
+			res = get_cloud_drive_list->executeQuery();
 
-		cd_root = (struct client_clouddrive_root*) MemManager::allocate(sizeof(struct client_clouddrive_root));
-		cd_root->root = (CDDriver **) malloc(sizeof(CDDriver*) * (res->rowsCount() + 2)); // 1 is enough, 2 is safety
-		for(cd_root->numOfCloudDrives=0; res->next(); cd_root->numOfCloudDrives++){
-			strcpy(classname, res->getString("classname")->c_str());
-			cdid = res->getUInt("cdid");
-			lid = res->getUInt("lid");
-			for(j=0;cd_handler[j].lid && cd_handler[j].lid != lid;j++);
-			if(!cd_handler[j].lid){
-				sprintf(tmpStr, "/usr/local/lib/lib%s.so", classname); // path hardcode now
-				cd_handler[j].lid = lid;
-				cd_handler[j].handler = dlopen(tmpStr, RTLD_NOW | RTLD_LOCAL);
-				if(!cd_handler[j].handler){
-					printf("Cannot load library. Path: \"%s\", Error: \"%s\"\n", tmpStr, dlerror());
-					cd_handler[j].lid = 0;
-					continue;
+			cd_root = (struct client_clouddrive_root*) MemManager::allocate(sizeof(struct client_clouddrive_root));
+			cd_root->root = (CDDriver **) malloc(sizeof(CDDriver*) * (res->rowsCount() + 2)); // 1 is enough, 2 is safety
+			for(cd_root->numOfCloudDrives=0; res->next(); cd_root->numOfCloudDrives++){
+				strcpy(classname, res->getString("classname")->c_str());
+				cdid = res->getUInt("cdid");
+				lid = res->getUInt("lid");
+				for(j=0;cd_handler[j].lid && cd_handler[j].lid != lid;j++);
+				if(!cd_handler[j].lid){
+					sprintf(tmpStr, "/usr/local/lib/lib%s.so", classname); // path hardcode now
+					cd_handler[j].lid = lid;
+					cd_handler[j].handler = dlopen(tmpStr, RTLD_NOW | RTLD_LOCAL);
+					if(!cd_handler[j].handler){
+						printf("Cannot load library. Path: \"%s\", Error: \"%s\"\n", tmpStr, dlerror());
+						cd_handler[j].lid = 0;
+						continue;
+					}
+					cd_handler[j].newCDDriver = (CDDriver* (*)(const char*, unsigned int))dlsym(cd_handler[j].handler,"createObject");
+					if((error=dlerror())!=NULL){
+						printf("Cannot find function \"CDDriver* createObject(const char*, int)\". Class: \"%s\", Error: \"%s\"\n", classname, error);
+						dlclose(cd_handler[j].handler);
+						cd_handler[j].lid = 0;
+						continue;
+					}
 				}
-				cd_handler[j].newCDDriver = (CDDriver* (*)(const char*, unsigned int))dlsym(cd_handler[j].handler,"createObject");
-				if((error=dlerror())!=NULL){
-					printf("Cannot find function \"CDDriver* createObject(const char*, int)\". Class: \"%s\", Error: \"%s\"\n", classname, error);
-					dlclose(cd_handler[j].handler);
-					cd_handler[j].lid = 0;
-					continue;
-				}
-			}
-			sprintf(tmpStr, "SELECT `id`, `key` FROM `%s` WHERE `id`=%u", classname, cdid);
-			res1 = stmt->executeQuery(tmpStr);
-			// http://www.linuxjournal.com/article/3687?page=0,0
+				sprintf(tmpStr, "SELECT `id`, `key` FROM `%s` WHERE `id`=%u", classname, cdid);
+				res1 = stmt->executeQuery(tmpStr);
+				// http://www.linuxjournal.com/article/3687?page=0,0
 
-			if(res1->next()){
-				cd_root->root[cd_root->numOfCloudDrives] = (*(cd_handler[j].newCDDriver))(res1->getString("key")->c_str(), res1->getUInt("id"));
-			}else{
-				cd_root->numOfCloudDrives--;
+				if(res1->next()){
+					cd_root->root[cd_root->numOfCloudDrives] = (*(cd_handler[j].newCDDriver))(res1->getString("key")->c_str(), res1->getUInt("id"));
+				}else{
+					cd_root->numOfCloudDrives--;
+				}
+				delete res1;
 			}
-			delete res1;
+			cd_root->root[cd_root->numOfCloudDrives]=NULL;
+			delete res;
+			delete stmt;
+			delete get_cloud_drive_list;
+			delete get_number_of_library;
 		}
-		cd_root->root[cd_root->numOfCloudDrives]=NULL;
-		delete res;
-		delete stmt;
-		delete get_cloud_drive_list;
-		delete get_number_of_library;
+		MemManager::free(classname);
+		MemManager::free(tmpStr);
 	}
-	MemManager::free(classname);
-	MemManager::free(tmpStr);
 }
 void Client::loadLogicalDrive(){
-	struct client_logical_drive* ld_last;
-	struct client_clouddrive* cd_last;
-	sql::PreparedStatement* get_logical_drive = MySQL::getCon()->prepareStatement("SELECT * FROM `logicaldriveinfo` WHERE `uid`=?");
-	sql::PreparedStatement* get_cloud_drive_by_ldid = MySQL::getCon()->prepareStatement("SELECT * FROM `logicaldrivecontainer` WHERE `ldid`=?");
-	sql::ResultSet *res;
-	sql::ResultSet *res1;
+	if(!ld_root){
+		struct client_logical_drive* ld_last;
+		struct client_clouddrive* cd_last;
+		sql::PreparedStatement* get_logical_drive = MySQL::getCon()->prepareStatement("SELECT * FROM `logicaldriveinfo` WHERE `uid`=?");
+		sql::PreparedStatement* get_cloud_drive_by_ldid = MySQL::getCon()->prepareStatement("SELECT * FROM `logicaldrivecontainer` WHERE `ldid`=?");
+		sql::ResultSet *res;
+		sql::ResultSet *res1;
 
-	get_logical_drive->setInt(1, account_id);
-	res = get_logical_drive->executeQuery();
+		get_logical_drive->setInt(1, account_id);
+		res = get_logical_drive->executeQuery();
 
-
-	while(res->next()){
-		if(ld_root){
-			ld_last = ( ld_last->next = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
-		}else{
-			ld_root = (struct client_logical_drive_root*) MemManager::allocate(sizeof(struct client_logical_drive_root));
-			ld_root->numOfLogicalDrive = res->rowsCount();
-
-			ld_last = ( ld_root->root = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
-		}
-
-		ld_last->ldid = res->getUInt("ldid");
-		ld_last->algoid = res->getUInt("algoid");
-		ld_last->name = (char*)MemManager::allocate(strlen(res->getString("name")->c_str())+1);
-		strcpy(ld_last->name, res->getString("name")->c_str());
-		ld_last->size = res->getUInt64("size");
-		ld_last->root = NULL;
-		ld_last->next = NULL;
-
-		get_cloud_drive_by_ldid->setUInt(1, ld_last->ldid);
-		res1 = get_cloud_drive_by_ldid->executeQuery();
-
-		ld_last->numOfCloudDrives = res1->rowsCount();
-		while(res1->next()){
-			if(ld_last->root){
-				cd_last = ( cd_last->next = (struct client_clouddrive*) MemManager::allocate(sizeof(struct client_clouddrive)) );
+		while(res->next()){
+			if(ld_root){
+				ld_last = ( ld_last->next = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
 			}else{
-				cd_last = ( ld_last->root = (struct client_clouddrive*) MemManager::allocate(sizeof(struct client_clouddrive)) );
-			}
-			cd_last->cdid = res1->getUInt("cdid");
-			cd_last->size = res1->getUInt64("size");
-			cd_last->dir = (char*)MemManager::allocate(strlen(res1->getString("cddir")->c_str())+1);
-			strcpy(cd_last->dir, res1->getString("cddir")->c_str());
-			cd_last->next = NULL;
-		}
-		delete res1;
+				ld_root = (struct client_logical_drive_root*) MemManager::allocate(sizeof(struct client_logical_drive_root));
+				ld_root->numOfLogicalDrive = res->rowsCount();
 
+				ld_last = ( ld_root->root = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
+			}
+
+			ld_last->ldid = res->getUInt("ldid");
+			ld_last->algoid = res->getUInt("algoid");
+			ld_last->name = (char*)MemManager::allocate(strlen(res->getString("name")->c_str())+1);
+			strcpy(ld_last->name, res->getString("name")->c_str());
+			ld_last->size = res->getUInt64("size");
+			ld_last->root = NULL;
+			ld_last->next = NULL;
+
+			get_cloud_drive_by_ldid->setUInt(1, ld_last->ldid);
+			res1 = get_cloud_drive_by_ldid->executeQuery();
+
+			ld_last->numOfCloudDrives = res1->rowsCount();
+			while(res1->next()){
+				if(ld_last->root){
+					cd_last = ( cd_last->next = (struct client_clouddrive*) MemManager::allocate(sizeof(struct client_clouddrive)) );
+				}else{
+					cd_last = ( ld_last->root = (struct client_clouddrive*) MemManager::allocate(sizeof(struct client_clouddrive)) );
+				}
+				cd_last->cdid = res1->getUInt("cdid");
+				cd_last->size = res1->getUInt64("size");
+				cd_last->dir = (char*)MemManager::allocate(strlen(res1->getString("cddir")->c_str())+1);
+				strcpy(cd_last->dir, res1->getString("cddir")->c_str());
+				cd_last->next = NULL;
+			}
+			delete res1;
+
+		}
+		delete res;
+		delete get_logical_drive;
+		delete get_cloud_drive_by_ldid;
 	}
-	delete res;
-	delete get_logical_drive;
-	delete get_cloud_drive_by_ldid;
 }
 
 
@@ -188,7 +194,9 @@ void Client::commandInterpreter(){
 	readLen = recvLen = 0;
 
 	do{
+printf("Inter: a\n");
 		readLen = SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE);
+printf("Inter: b\n");
 		if(!readLen){
 			Client::addResponseQueue(0x88, NULL);
 			break;
@@ -238,9 +246,12 @@ void Client::commandInterpreter(){
 			}
 		}
 
+printf("Inter: c\n");
 	}while(!isEnd);
+printf("Inter: d\n");
 	pthread_mutex_lock(&client_end_mutex);
 	pthread_mutex_lock(&client_end_mutex); // waiting responseThread end
+printf("Inter: e\n");
 }
 
 /* resposne function */
@@ -263,50 +274,56 @@ void Client::responseThread(void* arg){
 	bool isEnd = false;
 	struct client_response* tmp;
 	do{
+printf("-a\n");
 		pthread_mutex_lock(&res_mutex);
+printf("a\n");
 		while(res_root){
+printf("b\n");
 			pthread_mutex_lock(&res_queue_mutex);
 			res_root = ( tmp = res_root )->next;
 			pthread_mutex_unlock(&res_queue_mutex);
-			if(tmp != NULL){
-				switch(tmp->command){
-					case 0x00:
-					case 0x01:
-						Client::sendLogin(tmp->command, tmp->info);
-						break;
-					case 0x02:
-						Client::sendGetCloudDrive();
-						break;
-					case 0x03:
-						Client::sendGetLogicalDrive();
-						break;
-					case 0x04:
-						Client::sendList(tmp->info);
-						break;
-					case 0x20:
-						Client::sendCreateFile(tmp->info);
-						break;
-					case 0x21:
-						Client::sendSaveFile(tmp->info);
-						break;
-					case 0x22:
-						Client::sendGetFileInfo(tmp->info);
-						break;
-					case 0x23:
-						Client::sendGetFileChunk(tmp->info);
-						break;
-					case 0x28:
-						Client::sendDelFile(tmp->info);
-						break;
-					case 0x88:
-						SecureSocket::send(outBuffer, WebSocket::close(outBuffer));
-						isEnd = true;
-						break;
-				}
-				MemManager::free(tmp);
+printf("c\n");
+			switch(tmp->command){
+				case 0x00:
+				case 0x01:
+					Client::sendLogin(tmp->command, tmp->info);
+					break;
+				case 0x02:
+					Client::sendGetCloudDrive();
+					break;
+				case 0x03:
+					Client::sendGetLogicalDrive();
+					break;
+				case 0x04:
+					Client::sendList(tmp->info);
+					break;
+				case 0x20:
+					Client::sendCreateFile(tmp->info);
+					break;
+				case 0x21:
+					Client::sendSaveFile(tmp->info);
+					break;
+				case 0x22:
+					Client::sendGetFileInfo(tmp->info);
+					break;
+				case 0x23:
+					Client::sendGetFileChunk(tmp->info);
+					break;
+				case 0x28:
+					Client::sendDelFile(tmp->info);
+					break;
+				case 0x88:
+					SecureSocket::send(outBuffer, WebSocket::close(outBuffer));
+					isEnd = true;
+					break;
 			}
+printf("d\n");
+			MemManager::free(tmp);
+printf("e\n");
 		}
+printf("f\n");
 	}while(!isEnd); // how to comfirm no thread running ??
+printf("g\n");
 	pthread_mutex_unlock(&client_end_mutex);
 }
 
@@ -342,8 +359,8 @@ void Client::readLogin(){
 	}else{
 		account_id=0;
 	}
-	delete pstmt;
 	delete res;
+	delete pstmt;
 	Client::addResponseQueue(!!account_id /* 0x00 || 0x01 */ , info);
 }
 // 0x02 //done
