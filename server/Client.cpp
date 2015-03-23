@@ -20,7 +20,7 @@ Client::Client(){
 }
 void Client::loadCloudDrive(){
 	sql::PreparedStatement* get_cloud_drive_list = MySQL::getCon()->prepareStatement("SELECT `a`.`cdid` as `cdid`, `a`.`lid`, `b`.`dir` as `classname` FROM `clouddrive` as `a`, `libraries` as `b` WHERE `a`.`uid`=? AND `a`.`lid`=`b`.`id`");
-	sql::PreparedStatement* get_number_of_library = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT COUNT(`lid`) FROM `clouddrive` WHERE `uid`=? GROUP BY `lid`),0) as `num_of_lib`");
+	sql::PreparedStatement* get_number_of_library = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT COUNT(DISTINCT `lid`) FROM `clouddrive` WHERE `uid`=?),0) as `num_of_lib`");
 	sql::ResultSet* res;
 	sql::ResultSet* res1;
 	sql::Statement* stmt;
