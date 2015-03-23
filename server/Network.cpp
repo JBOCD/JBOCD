@@ -47,8 +47,9 @@ void Network::toBytes(long long value, unsigned char* ptr){
 	Network::toBytes((unsigned long long) value, ptr);
 }
 void Network::toBytes(char* value, unsigned char* ptr){
+	unsigned int t = strlen(value);
 	strcpy((char*) ptr+1, value);
-	Network::toBytes((unsigned char) strlen(value), ptr);
+	ptr[0] = t > 0xff ? 0xff : (unsigned char) t;
 }
 int Network::getLength(short value, int len){
 	return len + 2;

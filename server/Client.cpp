@@ -19,7 +19,7 @@ Client::Client(){
 	Client::commandInterpreter();
 }
 void Client::loadCloudDrive(){
-	sql::PreparedStatement* get_cloud_drive_list = MySQL::getCon()->prepareStatement("SELECT `a`.`cdid` as `cdid`, `a`.`lid`, `b`.`dir` as `classname` FROM `clouddrive` as `a`, `libraries` as `b` WHERE `a`.`uid`=? AND `a`.`lid`=`b`.`id`");
+	sql::PreparedStatement* get_cloud_drive_list = MySQL::getCon()->prepareStatement("SELECT `a`.`cdid` as `cdid`, `a`.`lid` as `lid`, `b`.`dir` as `classname` FROM `clouddrive` as `a`, `libraries` as `b` WHERE `a`.`uid`=? AND `a`.`lid`=`b`.`id`");
 	sql::PreparedStatement* get_number_of_library = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT COUNT(DISTINCT `lid`) FROM `clouddrive` WHERE `uid`=?),0) as `num_of_lib`");
 	sql::ResultSet* res;
 	sql::ResultSet* res1;
@@ -51,19 +51,20 @@ void Client::loadCloudDrive(){
 			strcpy(classname, res->getString("classname")->c_str());
 			cdid = res->getUInt("cdid");
 			lid = res->getUInt("lid");
-			for(j=0;!cd_handler[j].lid && cd_handler[j].lid != lid;j++);
+			for(j=0;cd_handler[j].lid && cd_handler[j].lid != lid;j++);
 			if(!cd_handler[j].lid){
 				sprintf(tmpStr, "/usr/local/lib/lib%s.so", classname); // path hardcode now
 				cd_handler[j].lid = lid;
 				cd_handler[j].handler = dlopen(tmpStr, RTLD_NOW | RTLD_LOCAL);
 				if(!cd_handler[j].handler){
-					fprintf(stderr, "Cannot load library. Path: \"%s\", Error: \"%s\"\n", tmpStr, dlerror());
+					printf("Cannot load library. Path: \"%s\", Error: \"%s\"\n", tmpStr, dlerror());
 					cd_handler[j].lid = 0;
 					continue;
 				}
-				*(void **)(&(cd_handler[j].newCDDriver))=dlsym(cd_handler[j].handler,"createObject");
+				cd_handler[j].newCDDriver = (CDDriver* (*)(const char*, unsigned int))dlsym(cd_handler[j].handler,"createObject");
+//				*(void **)(&(cd_handler[j].newCDDriver))=dlsym(cd_handler[j].handler,"createObject");
 				if((error=dlerror())!=NULL){
-					fprintf(stderr, "Cannot find function \"CDDriver* createObject(const char*, int)\". Class: \"%s\", Error: \"%s\"\n", classname, error);
+					printf("Cannot find function \"CDDriver* createObject(const char*, int)\". Class: \"%s\", Error: \"%s\"\n", classname, error);
 					dlclose(cd_handler[j].handler);
 					cd_handler[j].lid = 0;
 					continue;
@@ -72,7 +73,12 @@ void Client::loadCloudDrive(){
 			sprintf(tmpStr, "SELECT `id`, `key` FROM `%s` WHERE `id`=%u", classname, cdid);
 			res1 = stmt->executeQuery(tmpStr);
 			// http://www.linuxjournal.com/article/3687?page=0,0
-			cd_root->root[cd_root->numOfCloudDrives] = (*cd_handler[j].newCDDriver)(res->getString("key")->c_str(), res->getUInt("id"));
+
+			if(res1->next()){
+				cd_root->root[cd_root->numOfCloudDrives] = (*(cd_handler[j].newCDDriver))(res1->getString("key")->c_str(), res1->getUInt("id"));
+			}else{
+				cd_root->numOfCloudDrives--;
+			}
 			delete res1;
 		}
 		cd_root->root[cd_root->numOfCloudDrives]=NULL;
@@ -95,12 +101,15 @@ void Client::loadLogicalDrive(){
 	get_logical_drive->setInt(1, account_id);
 	res = get_logical_drive->executeQuery();
 
+
 	while(res->next()){
 		if(ld_root){
 			ld_last = ( ld_last->next = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
 		}else{
-			ld_last = ( ld_root->root = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
+			ld_root = (struct client_logical_drive_root*) MemManager::allocate(sizeof(struct client_logical_drive_root));
 			ld_root->numOfLogicalDrive = res->rowsCount();
+
+			ld_last = ( ld_root->root = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
 		}
 
 		ld_last->ldid = res->getUInt("ldid");
@@ -182,6 +191,7 @@ void Client::commandInterpreter(){
 	do{
 		readLen = SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE);
 		if(!readLen){
+printf("End Connection because of no readLen\n");
 			Client::addResponseQueue(0x88, NULL);
 			break;
 		}
@@ -256,7 +266,7 @@ void Client::responseThread(void* arg){
 	struct client_response* tmp;
 	do{
 		pthread_mutex_lock(&res_mutex);
-		do{
+		while(res_root){
 			pthread_mutex_lock(&res_queue_mutex);
 			res_root = ( tmp = res_root )->next;
 			pthread_mutex_unlock(&res_queue_mutex);
@@ -295,9 +305,9 @@ void Client::responseThread(void* arg){
 						isEnd = true;
 						break;
 				}
+				MemManager::free(tmp);
 			}
-			MemManager::free(tmp);
-		}while(res_root);
+		}
 	}while(!isEnd); // how to comfirm no thread running ??
 	pthread_mutex_unlock(&client_end_mutex);
 }
@@ -335,8 +345,8 @@ void Client::readLogin(){
 		account_id=0;
 	}
 	delete pstmt;
-	Client::addResponseQueue(!!account_id /* 0x00 || 0x01 */ , info);
 	delete res;
+	Client::addResponseQueue(!!account_id /* 0x00 || 0x01 */ , info);
 }
 // 0x02 //done
 void Client::readGetService(){
