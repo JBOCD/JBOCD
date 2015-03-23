@@ -24,7 +24,7 @@ void Client::loadCloudDrive(){
 	sql::ResultSet* res;
 	sql::ResultSet* res1;
 	sql::Statement* stmt;
-	
+
 	unsigned int cdid;
 	unsigned int lid;
 	char* classname = (char*) MemManager::allocate(256);
@@ -62,7 +62,6 @@ void Client::loadCloudDrive(){
 					continue;
 				}
 				cd_handler[j].newCDDriver = (CDDriver* (*)(const char*, unsigned int))dlsym(cd_handler[j].handler,"createObject");
-//				*(void **)(&(cd_handler[j].newCDDriver))=dlsym(cd_handler[j].handler,"createObject");
 				if((error=dlerror())!=NULL){
 					printf("Cannot find function \"CDDriver* createObject(const char*, int)\". Class: \"%s\", Error: \"%s\"\n", classname, error);
 					dlclose(cd_handler[j].handler);
@@ -191,7 +190,6 @@ void Client::commandInterpreter(){
 	do{
 		readLen = SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE);
 		if(!readLen){
-printf("End Connection because of no readLen\n");
 			Client::addResponseQueue(0x88, NULL);
 			break;
 		}
