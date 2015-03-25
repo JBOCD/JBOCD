@@ -485,7 +485,7 @@ void Client::readSaveFile(){
 		if(res->rowsCount() == 1){
 			check_chunk_size->setUInt(1,info->ldid);
 			check_chunk_size->setUInt(2,info->cdid);
-			check_chunk_size->setUInt64(3,info->fid);
+			check_chunk_size->setUInt64(3,info->fileid);
 			check_chunk_size->setUInt(4,info->seqnum);
 			check_clouddrive_size->setUInt(2, info->ldid);
 			check_clouddrive_size->setUInt(3, info->cdid);
@@ -500,7 +500,7 @@ void Client::readSaveFile(){
 			update_clouddrive_alloc_size->setUInt(2, info->cdid);
 
 			(res = check_chunk_size->executeQuery())->next();
-			if(diff = res->getUInt64(1) - chunkSize){ // chunk size no update != file name no update
+			if(diff = res->getUInt64(1) - info->chunkSize){ // chunk size no update != file name no update
 				info->isInsertOK = Client::NO_CHANGE;
 			}else{
 				check_clouddrive_size->setInt64(1,diff);
@@ -978,7 +978,7 @@ Client::~Client(){
 	MemManager::free(cd_root->root);
 	MemManager::free(cd_root);
 
-	for(i=0;cd_handler[i];i++){
+	for(i=0;cd_handler[i].handler;i++){
 		dlclose(cd_handler[i].handler);
 	}
 	MemManager::free(cd_handler);
