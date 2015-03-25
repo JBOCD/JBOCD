@@ -8,6 +8,7 @@
 // 2 linked list structure
 struct mem_header{
 	int size;
+	bool isfree;
 	struct mem_header* next; // next size
 	struct mem_header* other; // next same size memory
 };

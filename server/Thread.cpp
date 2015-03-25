@@ -1,5 +1,5 @@
-void Thread::init(Config* conf){
-	maxThread = json_object_get_int(conf->get("server.maxThreadPerConnection"));
+void Thread::init(){
+	maxThread = json_object_get_int(Config::get("server.maxThreadPerConnection"));
 	maxThread = maxThread < 1 ? 1 : maxThread;
 	pthread_create(&create_thread_tid, NULL, &Thread::createThreadFromQueue, NULL); // thread end only when process end
 }
@@ -51,28 +51,26 @@ void* Thread::newThreadInit(void* info){
 
 void Thread::addDelQueue(pthread_t t){
 	struct thread_queue* val = (struct thread_queue*) MemManager::allocate(sizeof(struct thread_queue));
+	printf("[%05d] Added Ended Thread to queue.\n", getpid());
 	val->t = t;
 	pthread_mutex_lock(&del_queue_mutex);
 	val->next = delRoot;
 	delRoot = val;
 	pthread_mutex_unlock(&del_queue_mutex);
-	printf("Added Ended Connection to clear queue.\n");
 }
 void Thread::clearThread(){
 	struct thread_queue* tmp;
 	pthread_mutex_lock(&del_queue_mutex);
 	pthread_mutex_lock(&counter_mutex);
-	printf("Clearing ended thread in pid==%d ...\n", (int)getpid());
 	while(delRoot){
 		tmp = delRoot;
-		printf("Free memory of pid==%d, thread==%d\n", (int)getpid(), (int) tmp->t);
+		printf("[%05d] Clear Ended thread (%d).\n", (int)getpid(), (int) tmp->t);
 		pthread_join(tmp->t, NULL);
 		curThread--;
 		delRoot = delRoot->next;
 		MemManager::free(tmp);
 		pthread_mutex_unlock(&new_thread_mutex);
 	}
-	printf("Clearing thread in pid==%d Completed.\n", (int)getpid());
 	pthread_mutex_unlock(&counter_mutex);
 	pthread_mutex_unlock(&del_queue_mutex);
 }

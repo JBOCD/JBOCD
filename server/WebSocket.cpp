@@ -138,7 +138,7 @@ void WebSocket::decode(unsigned long long* in, unsigned long long* out, unsigned
 	for(;i<j;i++,in++,out++){
 		*out = *in ^ maskKeyLL;
 	}
-	
+
 	if(j=len%4){
 		memcpy( maskKey    , ((unsigned char*)&maskKeyLL)+j, 4-j);
 		memcpy( maskKey+4-j,                  &maskKeyLL   , j  );

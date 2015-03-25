@@ -12,17 +12,16 @@ void* MemManager::allocate(unsigned int size, bool isExactSize){
 	pthread_mutex_lock(&mutex);
 	tmpCur = free_list->next;
 	tmpPre = free_list;
-	while(tmpCur){
+	while(tmpCur && !(tmpCur->size > size && isExactSize)){
 		if(tmpCur->size == size || (tmpCur->size > size && !isExactSize)){
-			result = tmpCur;
 			if(tmpCur->other){
-				tmpCur->other->next = tmpCur->next;
-				tmpPre->next = tmpCur->other;
+				result = tmpCur->other;
+				tmpCur->other = result->other;
 			}else{
+				result = tmpCur;
 				tmpPre->next = tmpCur->next;
 			}
-			break;
-		}else if(tmpCur->size > size && isExactSize){
+
 			break;
 		}
 		tmpPre = tmpCur;
@@ -42,40 +41,46 @@ void* MemManager::allocate(unsigned int size, bool isExactSize){
 			}
 		}
 	}
+	result->isfree = false;
 	return result ? (void*)(result + 1) : NULL;
 }
 
 void MemManager::free(void* mem){
 	struct mem_header* free_mem = ((struct mem_header*) mem)-1;
-	struct mem_header* tmpPre = free_list, *tmpCur = free_list->next;
-	pthread_mutex_lock(&mutex);
-	while(tmpCur){
-		if(tmpCur->size > free_mem->size){
-			free_mem->next = tmpCur;
-			free_mem->other = NULL;
-			tmpPre->next = free_mem;
-			free_mem = NULL;
-			break;
-		}else if(tmpCur->size == free_mem->size){
-			free_mem->next = tmpCur->next;
-			free_mem->other = tmpCur;
-			tmpPre->next = free_mem;
-			free_mem = NULL;
-			break;
+	if(!free_mem->isfree){
+		free_mem->next = free_mem->other = NULL;
+		free_mem->isfree = true;
+		struct mem_header* tmpPre = free_list, *tmpCur = free_list->next;
+		pthread_mutex_lock(&mutex);
+		while(tmpCur){
+			if(tmpCur->size > free_mem->size){
+				free_mem->next = tmpCur;
+				tmpPre->next = free_mem;
+				free_mem = NULL;
+				break;
+			}else if(tmpCur->size == free_mem->size){
+				free_mem->other = tmpCur->other;
+				tmpCur->other = free_mem;
+				free_mem = NULL;
+				break;
+			}
+			tmpPre = tmpCur;
+			tmpCur = tmpCur->next;
 		}
-		tmpPre = tmpCur;
-		tmpCur = tmpCur->next;
+
+		if(free_mem){
+			tmpPre->next = free_mem;
+		}
+		pthread_mutex_unlock(&mutex);
+	}else{
+		printf("Memory is already free, Please check the code and reset the pointer properly.\n");
 	}
-	if(free_mem){
-		tmpPre->next = free_mem;
-	}
-	pthread_mutex_unlock(&mutex);
 }
 void MemManager::flush(unsigned int targetSize){
 	struct mem_header* tmpCur;
 	pthread_mutex_lock(&mutex);
 	tmpCur = free_list->next;
-	
+
 	while(tmpCur && targetSize > 0){
 		if(tmpCur->other){
 			free_list->next = tmpCur->other;

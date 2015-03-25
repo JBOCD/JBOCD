@@ -47,6 +47,9 @@ Server::Server(){
 						// connect to DB
 						MySQL::init();
 
+						// Thread init
+						Thread::init();
+
 						// create tmpfile pool
 						FileManager::newProcess();
 						new Client();

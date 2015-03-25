@@ -27,14 +27,13 @@ void Config::init(){
 	}
 }
 json_object *Config::getFrom(const char *path, json_object *curRoot){
-	json_object *tmp;
 	const char * originalPath = path;
 	unsigned char i=0, flag=0;
 	do{
-		if(flag)path++ && i-- && (flag=0);
+		if(flag) path++ && i-- && (flag=0);
 		if(*(path+i) == 0 || *(path+i) == '.' || (i && *(path+i)=='[')){
 			if(i>CONFIG_MAX_KEY){
-				fprintf(stderr, "Config Path Error: key should not exceed 20 character. %s\n", originalPath);
+				fprintf(stderr, "Config Path Error: key should not exceed %d character. %s\n", CONFIG_MAX_KEY, originalPath);
 				exit(1);
 			}
 			if(i==0){
@@ -43,8 +42,7 @@ json_object *Config::getFrom(const char *path, json_object *curRoot){
 			}
 			memcpy(tmpStr, path, i);
 			tmpStr[i]=0;
-			json_object_object_get_ex(curRoot, tmpStr, &tmp);
-			curRoot=tmp;
+			json_object_object_get_ex(curRoot, tmpStr, &curRoot);
 			path += i;
 			i=0;
 			flag=1;

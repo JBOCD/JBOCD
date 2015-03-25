@@ -6,8 +6,6 @@
 #ifndef FILE_MANAGEMER_H
 #define FILE_MANAGEMER_H
 
-#define CONFIG_MAX_KEY 20
-
 // #pragma pack(1)
 struct file_store{
 	struct file_store* next;

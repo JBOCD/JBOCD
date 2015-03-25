@@ -61,13 +61,13 @@ void Client::loadCloudDrive(){
 					cd_handler[j].lid = lid;
 					cd_handler[j].handler = dlopen(tmpStr, RTLD_NOW | RTLD_LOCAL);
 					if(!cd_handler[j].handler){
-						printf("Cannot load library. Path: \"%s\", Error: \"%s\"\n", tmpStr, dlerror());
+						printf("[%05d] Cannot load library. Path: \"%s\", Error: \"%s\"\n", (int) getpid(), tmpStr, dlerror());
 						cd_handler[j].lid = 0;
 						continue;
 					}
 					cd_handler[j].newCDDriver = (CDDriver* (*)(const char*, unsigned int))dlsym(cd_handler[j].handler,"createObject");
 					if((error=dlerror())!=NULL){
-						printf("Cannot find function \"CDDriver* createObject(const char*, int)\". Class: \"%s\", Error: \"%s\"\n", classname, error);
+						printf("[%05d] Cannot find function \"CDDriver* createObject(const char*, int)\". Class: \"%s\", Error: \"%s\"\n", (int) getpid(), classname, error);
 						dlclose(cd_handler[j].handler);
 						cd_handler[j].lid = 0;
 						continue;
@@ -159,11 +159,11 @@ void Client::prepareStatement(){
 	get_list = MySQL::getCon()->prepareStatement("SELECT * FROM `directory` WHERE `ldid`=? AND `parentid`=?");
 
 	//	used in 0x20
-	get_next_fileid = MySQL::getCon()->prepareStatement("SELECT IFNULL((SELECT MAX(fileid)+1 FROM `directory` WHERE `ldid`=1 GROUP BY ldid), 1) as `fileid`");
+	get_next_fileid = MySQL::getCon()->prepareStatement("SELECT IFNULL((SELECT MAX(fileid)+1 FROM `directory` WHERE `ldid`=? GROUP BY ldid), 1) as `fileid`");
 	create_file = MySQL::getCon()->prepareStatement("INSERT INTO `directory` (`ldid`, `parentid`, `fileid`, `name`, `size`) VALUE (?,?,?,?,?)");
 
 	//	used in 0x21
-	insert_chunk = MySQL::getCon()->prepareStatement("INSERT INTO `filechunk` (`ldid`, `cdid`, `fileid`, `seqnum`, `chunk_name`, `size`) VALUE (?,?,?,?,?,?)");
+	insert_chunk = MySQL::getCon()->prepareStatement("REPLACE INTO `filechunk` (`ldid`, `cdid`, `fileid`, `seqnum`, `chunk_name`, `size`) VALUE (?,?,?,?,?,?)");
 
 	//	used in 0x22
 	get_file_chunk = MySQL::getCon()->prepareStatement("SELECT * FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
@@ -194,18 +194,18 @@ void Client::commandInterpreter(){
 	readLen = recvLen = 0;
 
 	do{
-printf("Inter: a\n");
+		// clear previous buffer
+//		memset(inBuffer, 0, WebSocket::MAX_PACKAGE_SIZE);
 		readLen = SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE);
-printf("Inter: b\n");
 		if(!readLen){
 			Client::addResponseQueue(0x88, NULL);
 			break;
 		}
 		readLen = WebSocket::parseMsg(inBuffer, readLen, false, &recvLen, maskKey, &err); // the first message should not be continue
 		// err handling
-		if(err & WebSocket::ERR_VER_MISMATCH) printf("WebSocket Version not match.\n");
-		if(err & WebSocket::ERR_NOT_WEBSOCKET) printf("Connection is not WebScoket.\n");
-		if(err & WebSocket::ERR_WRONG_WS_PROTOCOL) printf("WebSocket Protocol Error, Client Package have no mask.\n");
+		if(err & WebSocket::ERR_VER_MISMATCH) printf("[%05d] WebSocket Version not match.\n", (int) getpid());
+		if(err & WebSocket::ERR_NOT_WEBSOCKET) printf("[%05d] Connection is not WebScoket.\n", (int) getpid());
+		if(err & WebSocket::ERR_WRONG_WS_PROTOCOL) printf("[%05d] WebSocket Protocol Error, Client Package have no mask.\n", (int) getpid());
 		if(err){
 			Client::addResponseQueue(0x88, NULL);
 			break;
@@ -246,12 +246,9 @@ printf("Inter: b\n");
 			}
 		}
 
-printf("Inter: c\n");
 	}while(!isEnd);
-printf("Inter: d\n");
 	pthread_mutex_lock(&client_end_mutex);
 	pthread_mutex_lock(&client_end_mutex); // waiting responseThread end
-printf("Inter: e\n");
 }
 
 /* resposne function */
@@ -274,15 +271,11 @@ void Client::responseThread(void* arg){
 	bool isEnd = false;
 	struct client_response* tmp;
 	do{
-printf("-a\n");
 		pthread_mutex_lock(&res_mutex);
-printf("a\n");
 		while(res_root){
-printf("b\n");
 			pthread_mutex_lock(&res_queue_mutex);
 			res_root = ( tmp = res_root )->next;
 			pthread_mutex_unlock(&res_queue_mutex);
-printf("c\n");
 			switch(tmp->command){
 				case 0x00:
 				case 0x01:
@@ -317,13 +310,9 @@ printf("c\n");
 					isEnd = true;
 					break;
 			}
-printf("d\n");
 			MemManager::free(tmp);
-printf("e\n");
 		}
-printf("f\n");
 	}while(!isEnd); // how to comfirm no thread running ??
-printf("g\n");
 	pthread_mutex_unlock(&client_end_mutex);
 }
 
@@ -381,7 +370,8 @@ void Client::readList(){
 	unsigned long long parentid = Network::toLongLong(inBuffer+6);
 	sql::ResultSet *res;
 	info->operationID = *(inBuffer+1);
-
+	info->root = NULL;
+	info->numberOfFile = 0;
 	check_user_logical_drive->setUInt(1, ldid);
 	res = check_user_logical_drive->executeQuery();
 	if(res->rowsCount() == 1){
@@ -392,9 +382,9 @@ void Client::readList(){
 		info->numberOfFile = res->rowsCount();
 		while(res->next()){
 			if(info->root){
-				tmp = ( tmp->next = (struct client_list*) MemManager::allocate(sizeof(struct client_list)) );
+				tmp = (  tmp->next = (struct client_list*) MemManager::allocate(sizeof(struct client_list)) );
 			}else{
-				info->root = ( tmp = (struct client_list*) MemManager::allocate(sizeof(struct client_list)) );
+				tmp = ( info->root = (struct client_list*) MemManager::allocate(sizeof(struct client_list)) );
 			}
 			tmp->fileid = res->getUInt64("fileid");
 			tmp->fileSize = res->getUInt64("size");
@@ -451,7 +441,7 @@ void Client::readSaveFile(){
 	sql::ResultSet *res;
 
 	info->object = this;
-	info->fptr = &Client::processGetFileChunk;
+	info->fptr = &Client::processSaveFile;
 
 	info->isInsertOK = 0;
 	info->operationID = *(inBuffer +1);
@@ -459,10 +449,11 @@ void Client::readSaveFile(){
 	info->cdid = Network::toInt(inBuffer + 6);
 	info->fileid = Network::toLongLong(inBuffer + 10);
 	info->seqnum = Network::toInt(inBuffer + 18);
-	info->remoteName = (char*) Network::toChars(inBuffer + 26);
-	bufShift = 32 + Network::toShort(inBuffer + 26); // 26 + 2 + name.length + 4
+//	info->remoteName = (char*) Network::toChars(inBuffer + 22);
+	info->remoteName = (char*) MemManager::allocate(256);
+	sprintf(info->remoteName, "JBOCD-chunk-%llu-%u.dontRemove", info->fileid, info->seqnum);
+	bufShift = 27 + *(inBuffer + 22); // 22 + 1 + name.length + 4
 	info->chunkSize = (maxSaveSize = Network::toInt(inBuffer + bufShift - 4));
-
 	info->tmpFile = FileManager::newTemp(info->chunkSize);
 
 	fd = FileManager::open(info->tmpFile, 'w');
@@ -662,7 +653,7 @@ void Client::processDelFile(void *arg){
 	CDDriver* cdDriver;
 	char* remotePath = (char*) MemManager::allocate(512);
 
-	sql::PreparedStatement* pstmt;	
+	sql::PreparedStatement* pstmt;
 	sql::ResultSet *res;
 
 	// get logical drive info
@@ -783,7 +774,7 @@ void Client::sendList(void* a){
 	*outBuffer = 0x04;
 	*(outBuffer+1) = info->operationID;
 	Network::toBytes(info->numberOfFile, outBuffer+2);
-	for(;dir;bufferShift += 17+strlen(dir->name)){
+	while(dir){
 		// 8+8+2+n
 		if(WebSocket::willExceed(bufferShift, 17+strlen(dir->name)) ){
 			SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, bufferShift));
@@ -794,7 +785,9 @@ void Client::sendList(void* a){
 		Network::toBytes(dir->fileid  , outBuffer + bufferShift);
 		Network::toBytes(dir->fileSize, outBuffer + bufferShift + 8);
 		Network::toBytes(dir->name    , outBuffer + bufferShift + 16);
+		bufferShift += 17+strlen(dir->name);
 		a = (void*) dir;
+		MemManager::free(dir->name);
 		dir = dir->next;
 		MemManager::free(a);
 	}

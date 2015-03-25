@@ -35,7 +35,7 @@ class Thread{
 		static void clearThread(); // only main thread can use this function
 		Thread();
 	public:
-		static void init(Config* conf);
+		static void init();
 		static void create(void* (*callback)(void*), void* info);
 };
 

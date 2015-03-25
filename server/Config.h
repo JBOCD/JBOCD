@@ -6,7 +6,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define CONFIG_MAX_KEY 20
+#define CONFIG_MAX_KEY 40
 
 class Config{
 	protected:

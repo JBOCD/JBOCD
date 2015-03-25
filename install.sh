@@ -142,6 +142,11 @@ if [ ! -f ${SAVE_STEP_PATH}/lib-apt-install ]; then
 	#for websocket
 	sudo apt-get install openssl libssl-dev -y
 
+	#for third party
+	sudo apt-get install python python-setuptools python-pip -y
+	sudo easy_install --upgrade google-api-python-client
+	sudo pip install dropbox
+
 #	sudo apt-get isntall gcc clang libtool autoconf automake
 	touch ${SAVE_STEP_PATH}/lib-apt-install
 fi
