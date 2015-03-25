@@ -168,7 +168,7 @@ void Client::prepareStatement(){
 	check_clouddrive_size = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT `size` - `alloc_size` < ? FROM `logicaldrivecontainer` WHERE `ldid`=? AND `cdid`=? ), 0) as ``");
 	check_logicaldrive_size = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT `a`.`size` - SUM(`b`.`alloc_size`) < ? FROM `logicaldriveinfo` as `a`, `logicaldrivecontainer` as `b` WHERE `a`.`ldid`=? AND `a`.`ldid`=`b`.`ldid` ), 0) as ``");
 	update_chunk_info = MySQL::getCon()->prepareStatement("REPLACE INTO `filechunk` (`ldid`, `cdid`, `fileid`, `seqnum`, `chunk_name`, `size`) VALUE (?,?,?,?,?,?)");
-	update_clouddrive_alloc_size = MySQL::getCon()->prepareStatement("UPDATE `filechunk` SET `alloc_size`=`alloc_size`+? WHERE `ldid`=? AND `cdid`=?");
+	update_clouddrive_alloc_size = MySQL::getCon()->prepareStatement("UPDATE `filechunk` SET `size`=`size`+? WHERE `ldid`=? AND `cdid`=?");
 
 	//	used in 0x22
 	get_file_chunk = MySQL::getCon()->prepareStatement("SELECT * FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
