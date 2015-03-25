@@ -111,7 +111,7 @@ void Client::loadLogicalDrive(){
 		ld_root->root = NULL;
 
 		while(res->next()){
-			if(ld_root){
+			if(ld_root->root){
 				ld_last = ( ld_last->next = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
 			}else{
 				ld_last = ( ld_root->root = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
