@@ -50,7 +50,7 @@ void Client::loadCloudDrive(){
 			res = get_cloud_drive_list->executeQuery();
 
 			cd_root = (struct client_clouddrive_root*) MemManager::allocate(sizeof(struct client_clouddrive_root));
-			cd_root->root = (CDDriver **) malloc(sizeof(CDDriver*) * (res->rowsCount() + 2)); // 1 is enough, 2 is safety
+			cd_root->root = (CDDriver **) malloc(sizeof(CDDriver*) * (res->rowsCount() + 1));
 			for(cd_root->numOfCloudDrives=0; res->next(); cd_root->numOfCloudDrives++){
 				strcpy(classname, res->getString("classname")->c_str());
 				cdid = res->getUInt("cdid");
@@ -106,13 +106,14 @@ void Client::loadLogicalDrive(){
 		get_logical_drive->setInt(1, account_id);
 		res = get_logical_drive->executeQuery();
 
+		ld_root = (struct client_logical_drive_root*) MemManager::allocate(sizeof(struct client_logical_drive_root));
+		ld_root->numOfLogicalDrive = res->rowsCount();
+		ld_root->root = NULL;
+
 		while(res->next()){
 			if(ld_root){
 				ld_last = ( ld_last->next = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
 			}else{
-				ld_root = (struct client_logical_drive_root*) MemManager::allocate(sizeof(struct client_logical_drive_root));
-				ld_root->numOfLogicalDrive = res->rowsCount();
-
 				ld_last = ( ld_root->root = (struct client_logical_drive*) MemManager::allocate(sizeof(struct client_logical_drive)) );
 			}
 
@@ -139,6 +140,7 @@ void Client::loadLogicalDrive(){
 				cd_last->dir = (char*)MemManager::allocate(strlen(res1->getString("cddir")->c_str())+1);
 				strcpy(cd_last->dir, res1->getString("cddir")->c_str());
 				cd_last->next = NULL;
+				printf("cdid = %d, size = %lld, name = %s\n", cd_last->cdid,  cd_last->size, cd_last->dir);
 			}
 			delete res1;
 
