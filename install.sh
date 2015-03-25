@@ -124,7 +124,8 @@ if [ "$SET_PROXY" = "y" ]; then
 fi
 
 echo Installing Build Package.
-sudo apt-get upgrade -y && sudo apt-get update -y
+sudo apt-get upgrade -y
+sudo apt-get update -y
 if [ ! -f ${SAVE_STEP_PATH}/lib-apt-install ]; then
 	# for all
 	sudo apt-get install build-essential git -y
