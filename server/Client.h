@@ -157,7 +157,6 @@ class Client{
 		struct clouddriver_handler_list* cd_handler;
 
 // WebSocket
-		CDDriver ** tmpCDD;
 		int err;
 		unsigned char maskKey[4];
 		unsigned char* inBuffer;
@@ -178,11 +177,25 @@ class Client{
 		sql::PreparedStatement* get_list;
 		sql::PreparedStatement* get_next_fileid;
 		sql::PreparedStatement* create_file;
-		sql::PreparedStatement* insert_chunk;
+		sql::PreparedStatement* check_chunk_size;
+		sql::PreparedStatement* check_clouddrive_size;
+		sql::PreparedStatement* check_logicaldrive_size;
+		sql::PreparedStatement* update_chunk_info;
+		sql::PreparedStatement* update_clouddrive_alloc_size;
 		sql::PreparedStatement* get_file_chunk;
 		sql::PreparedStatement* get_child;
 		sql::PreparedStatement* get_file;
 		sql::PreparedStatement* del_file;
+
+// const
+		// file chunk upload / update
+		static const unsigned char UPDATE;
+		static const unsigned char INSERT;
+		static const unsigned char NO_CHANGE;
+		static const unsigned char CHUNK_SIZE_EXCEED_CD_LIMIT;
+		static const unsigned char CHUNK_SIZE_EXCEED_LD_LIMIT;
+		static const unsigned char CHUNK_SIZE_ZERO_EXCEPTION;
+
 // function
 		void loadCloudDrive();
 		void loadLogicalDrive();
@@ -220,9 +233,18 @@ class Client{
 		void sendDelFile(void* a);
 	public:
 		Client();
+		~Client();
 		static void _client_close(int signum);
 		static void* _thread_redirector(void* arg);
 };
+
+const unsigned char Client::UPDATE = 2;
+const unsigned char Client::INSERT = 1;
+const unsigned char Client::NO_CHANGE = 0;
+const unsigned char Client::CHUNK_SIZE_EXCEED_CD_LIMIT = -1;
+const unsigned char Client::CHUNK_SIZE_EXCEED_LD_LIMIT = -2;
+const unsigned char Client::CHUNK_SIZE_ZERO_EXCEPTION = -3;
+
 #include "Client.cpp"
 
 #endif
