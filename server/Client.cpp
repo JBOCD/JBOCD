@@ -140,7 +140,6 @@ void Client::loadLogicalDrive(){
 				cd_last->dir = (char*)MemManager::allocate(strlen(res1->getString("cddir")->c_str())+1);
 				strcpy(cd_last->dir, res1->getString("cddir")->c_str());
 				cd_last->next = NULL;
-				printf("cdid = %d, size = %lld, name = %s\n", cd_last->cdid,  cd_last->size, cd_last->dir);
 			}
 			delete res1;
 
