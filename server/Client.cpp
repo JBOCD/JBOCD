@@ -900,17 +900,16 @@ void Client::sendGetFileChunk(void* a){
 	Network::toBytes(info->seqnum, outBuffer + 2);
 	Network::toBytes(info->chunkSize, outBuffer + 6);
 	if(fd > 0 && maxRead > 0){
-		do{
-			readBytes = read(fd, outBuffer+14, maxRead);
-			if(readBytes >= 0){
+		while(readBytes = read(fd, outBuffer+14, maxRead)){
+			if(readBytes > 0){
 				totalReadBytes += readBytes;
 				Network::toBytes(readBytes, outBuffer + 10);
 				SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, readBytes+14));
-			}else{
-				SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 14));
 			}
 			Network::toBytes(totalReadBytes, outBuffer + 6);
-		}while(maxRead == readBytes);
+		}
+		Network::toBytes(readBytes, outBuffer + 10);
+		SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 14));
 		close(fd);
 	}else{
 		SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 14));
