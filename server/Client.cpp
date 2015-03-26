@@ -173,9 +173,11 @@ void Client::prepareStatement(){
 	get_file_chunk = MySQL::getCon()->prepareStatement("SELECT * FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
 
 	//	used in 0x28
-	get_child = MySQL::getCon()->prepareStatement("SELECT * FROM `directory` WHERE `ldid`=? AND `parentid`=?");
-	get_file = MySQL::getCon()->prepareStatement("SELECT * FROM `directory` WHERE `ldid`=? AND `fileid`=?");
 	del_file = MySQL::getCon()->prepareStatement("DELETE FROM `directory` WHERE `ldid`=? AND `fileid`=?");
+	get_file = MySQL::getCon()->prepareStatement("SELECT * FROM `directory` WHERE `ldid`=? AND `fileid`=?");
+	get_child = MySQL::getCon()->prepareStatement("SELECT * FROM `directory` WHERE `ldid`=? AND `parentid`=?");
+	get_all_chunk = MySQL::getCon()->prepareStatement("SELECT * FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
+	remove_chunk = MySQL::getCon()->prepareStatement("DELETE FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
 }
 
 void Client::updatePrepareStatementAccount(){
@@ -582,6 +584,8 @@ void Client::readDelFile(){
 	struct client_del_file* info;
 	unsigned int ldid = Network::toInt(inBuffer + 2);
 	unsigned long long fileid = Network::toLongLong(inBuffer + 6) ;
+	unsigned long long *fileList;
+	int i;
 	sql::ResultSet *res;
 	get_file->setUInt( 1, ldid );
 	get_file->setUInt64( 2, fileid );
@@ -600,21 +604,40 @@ void Client::readDelFile(){
 		del_file->setUInt( 1, ldid );
 		del_file->setUInt64( 2, fileid );
 		del_file->executeUpdate();
-		if(res->getUInt64("size") > 0){
-			Thread::create(&Client::_thread_redirector, (void*) info);
-		}else{
-			Client::addResponseQueue(0x28, info);
-			delete res;
-			get_child->setUInt( 1, ldid );
-			get_child->setUInt64( 2, fileid );
-			res = get_child->executeQuery();
-			while(res->next()){
-				Network::toBytes((unsigned long long) res->getUInt64(fileid), inBuffer + 6);
-				Client::readDelFile();
-			}
+
+		delete res;
+		get_all_chunk->setUInt(1, info->ldid);
+		get_all_chunk->setUInt64(2, info->fileid);
+		res = get_all_chunk->executeQuery();
+		info->list = (struct client_del_chunk_array*)MemManager::allocate(sizeof(struct client_del_chunk_array) * (res->rowsCount() + 1) );
+		for(i=0;res->next();i++){
+			info->list[i].cdid = res->getUInt("cdid");
+			info->list[i].chunkName = (char*) MemManager::allocate( strlen( res->getString("chunk_name").c_str() ) + 1 );
+			strcpy(info->list[i].chunkName, res->getString("chunk_name")->c_str());
 		}
+		memset(info->list + i, 0, sizeof(struct client_del_chunk_array));
+		delete res;
+		res = NULL;
+		remove_chunk->setUInt(1, info->ldid);
+		remove_chunk->setUInt64(2, info->fileid);
+		remove_chunk->executeUpdate();
+		Thread::create(&Client::_thread_redirector, (void*) info);
 	}
+
+	if(res) delete res;
+	get_child->setUInt( 1, ldid );
+	get_child->setUInt64( 2, fileid );
+	res = get_child->executeQuery();
+	fileList = (unsigned long long*) MemManager::allocate(sizeof(unsigned long long) * ( res->rowsCount() + 1 ) );
+	for(i=0; res->next(); i++){
+		fileList[i] = res->getUInt64("fileid");
+	}
+	fileList[i]=0;
 	delete res;
+	for(i=0; fileList[i]; i++){
+		Network::toBytes(fileList[i], inBuffer + 6);
+		Client::readDelFile();
+	}
 }
 
 /* Process Command */
@@ -698,30 +721,21 @@ void Client::processGetFileChunk(void *arg){
 }
 // 0x28
 void Client::processDelFile(void *arg){
-	struct client_read_file* info = (struct client_read_file*) arg;
+	struct client_del_file* info = (struct client_del_file*) arg;
 	struct client_logical_drive* ld;
 
 	char* dir;
 	CDDriver* cdDriver;
 	char* remotePath = (char*) MemManager::allocate(512);
 
-	sql::PreparedStatement* pstmt;
-	sql::ResultSet *res;
-
 	// get logical drive info
 	for(ld = ld_root->root; ld && ld->ldid != info->ldid; ld = ld->next);
 
-	pstmt = MySQL::getCon()->prepareStatement("SELECT * FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
-	pstmt->setUInt(1, info->ldid);
-	pstmt->setUInt64(2, info->fileid);
-	res = pstmt->executeQuery();
 	// select all file id chunk
-	while(res->next()){
-		unsigned int cdid = res->getUInt("cdid");
-		const char* chunkName = res->getString("chunk_name").c_str();
+	for(int i=0; info->list[i].cdid; i++){
 
 		for(struct client_clouddrive* cd = ld->root; cd; cd = cd->next){
-			if(cd->cdid == info->cdid){
+			if(cd->cdid == info->list[i].cdid){
 				dir = cd->dir;
 				break;
 			}
@@ -729,25 +743,18 @@ void Client::processDelFile(void *arg){
 
 		// get handle Cloud Drive driver
 		for(CDDriver** cd = cd_root->root; *cd; cd++){
-			if((*cd)->isID(cdid)){
+			if((*cd)->isID(info->list[i].cdid)){
 				cdDriver = *cd;
 				break;
 			}
 		}
-		sprintf(remotePath, "%s%s", dir, chunkName);
+		sprintf(remotePath, "%s%s", dir, info->list[i].chunkName);
+		MemManager::free(info->list[i].chunkName);
 		if(cdDriver->del(remotePath)){
 			// not zero mean fail
 		}
 	}
-	delete res;
-	delete pstmt;
-	// del all file id
-	pstmt = MySQL::getCon()->prepareStatement("DELETE FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
-	pstmt->setUInt(1, info->ldid);
-	pstmt->setUInt64(2, info->fileid);
-	pstmt->executeUpdate();
-	delete pstmt;
-
+	MemManager::free(info->list);
 	MemManager::free(remotePath);
 
 	Client::addResponseQueue(0x28, info);

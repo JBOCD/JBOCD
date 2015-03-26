@@ -130,6 +130,11 @@ class Client{
 		};
 
 		//0x28
+		struct client_del_chunk_array{
+			unsigned int cdid;
+			char* chunkName;
+		};
+
 		struct client_del_file{
 			Client* object;
 			void (Client::*fptr)(void*);
@@ -138,6 +143,7 @@ class Client{
 			unsigned long long parentid;
 			unsigned long long fileid;
 			char* name;
+			struct client_del_chunk_array* list;
 		};
 
 		pthread_t responseThread_tid;
@@ -186,6 +192,8 @@ class Client{
 		sql::PreparedStatement* get_child;
 		sql::PreparedStatement* get_file;
 		sql::PreparedStatement* del_file;
+		sql::PreparedStatement* get_all_chunk;
+		sql::PreparedStatement* remove_chunk;
 
 // const
 		// file chunk upload / update
