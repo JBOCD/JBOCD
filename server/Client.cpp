@@ -517,8 +517,11 @@ void Client::readSaveFile(){
 					if(res->getUInt(1)){
 						info->isInsertOK = Client::CHUNK_SIZE_EXCEED_LD_LIMIT;
 					}
-					update_clouddrive_alloc_size->executeUpdate();
-					info->isInsertOK = Client::INSERT;
+					if(update_clouddrive_alloc_size->executeUpdate()){
+						info->isInsertOK = Client::INSERT;
+					}else{
+						info->isInsertOK = Client::CD_NOT_IN_LD;
+					}
 				}
 			}
 			// executeUpdate return { 1 == Insert / No Change, 2 == update}
@@ -546,6 +549,8 @@ void Client::readGetFile(){
 	unsigned long long fileID = Network::toLongLong(inBuffer + 6);
 	sql::ResultSet *res;
 
+	info->operationID = *(inBuffer + 1);
+
 	check_user_logical_drive->setUInt(1, logicalDriveID);
 	res = check_user_logical_drive->executeQuery();
 	if(res->rowsCount() == 1){
@@ -553,28 +558,32 @@ void Client::readGetFile(){
 
 		get_file_chunk->setUInt(1, logicalDriveID); // get_file_chunk is undefine
 		get_file_chunk->setUInt64(2, fileID);
-		(res = get_file_chunk->executeQuery())->next();
+		if((res = get_file_chunk->executeQuery())->next()){
 
-		info->operationID = *(inBuffer + 1);
-		info->num_of_chunk = res->getUInt("num_of_chunk");
-		info->size = res->getUInt64("size");
-		Client::addResponseQueue(0x22, (void*) info);
+			info->num_of_chunk = res->getUInt("num_of_chunk");
+			info->size = res->getUInt64("size");
+			Client::addResponseQueue(0x22, (void*) info);
 
-		while(res->next()){
-			chunk_info = (struct client_read_file*) MemManager::allocate(sizeof(struct client_read_file));
-			chunk_info->object = this;
-			chunk_info->fptr = &Client::processGetFileChunk;
-			chunk_info->operationID = *(inBuffer + 1);
-			chunk_info->ldid = logicalDriveID;
-			chunk_info->cdid = res->getUInt("cdid");
-			chunk_info->fileid = fileID;
-			chunk_info->seqnum = res->getUInt("seqnum");
-			chunk_info->chunkSize = res->getUInt("size");
+			while(res->next()){
+				chunk_info = (struct client_read_file*) MemManager::allocate(sizeof(struct client_read_file));
+				chunk_info->object = this;
+				chunk_info->fptr = &Client::processGetFileChunk;
+				chunk_info->operationID = *(inBuffer + 1);
+				chunk_info->ldid = logicalDriveID;
+				chunk_info->cdid = res->getUInt("cdid");
+				chunk_info->fileid = fileID;
+				chunk_info->seqnum = res->getUInt("seqnum");
+				chunk_info->chunkSize = res->getUInt("size");
 
-			chunk_info->chunkName = (char*) MemManager::allocate(strlen(res->getString("chunk_name")->c_str())+1);
-			strcpy(chunk_info->chunkName, res->getString("chunk_name")->c_str());
+				chunk_info->chunkName = (char*) MemManager::allocate(strlen(res->getString("chunk_name")->c_str())+1);
+				strcpy(chunk_info->chunkName, res->getString("chunk_name")->c_str());
 
-			Thread::create(&Client::_thread_redirector, (void*) chunk_info);
+				Thread::create(&Client::_thread_redirector, (void*) chunk_info);
+			}
+		}else{
+			info->num_of_chunk = 0;
+			info->size = 0;
+			Client::addResponseQueue(0x22, (void*) info);
 		}
 	}
 	delete res;

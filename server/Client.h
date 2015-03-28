@@ -204,6 +204,7 @@ class Client{
 		static const unsigned char CHUNK_SIZE_EXCEED_CD_LIMIT;
 		static const unsigned char CHUNK_SIZE_EXCEED_LD_LIMIT;
 		static const unsigned char CHUNK_SIZE_ZERO_EXCEPTION;
+		static const unsigned char CD_NOT_IN_LD;
 
 // function
 		void loadCloudDrive();
@@ -253,6 +254,7 @@ const unsigned char Client::NO_CHANGE = 0;
 const unsigned char Client::CHUNK_SIZE_EXCEED_CD_LIMIT = -1;
 const unsigned char Client::CHUNK_SIZE_EXCEED_LD_LIMIT = -2;
 const unsigned char Client::CHUNK_SIZE_ZERO_EXCEPTION = -3;
+const unsigned char Client::CD_NOT_IN_LD = -4;
 
 #include "Client.cpp"
 
