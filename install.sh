@@ -167,12 +167,10 @@ sudo make clean BUILD=$BUILD; sudo make BUILD=$BUILD
 echo Setting up JBOCD
 [ ! -d /etc/JBOCD ] && sudo mkdir /etc/JBOCD
 
-# always replace since it is developing
-## if there is config file, don't copy
-#if [ ! -f /etc/JBOCD/config.json ]; then
+if [ ! -f /etc/JBOCD/config.json ]; then
 	sudo cp config.json /etc/JBOCD/config.json
 	sudo chmod 644 /etc/JBOCD/config.json
-#fi
+fi
 
 echo "Installation completed"
 
