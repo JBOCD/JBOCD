@@ -38,7 +38,7 @@ void Client::loadCloudDrive(){
 
 		stmt = MySQL::getCon()->createStatement();
 
-		get_number_of_library->setInt(1, account_id);
+		get_number_of_library->setUInt(1, account_id);
 		res = get_number_of_library->executeQuery();
 
 		if(res->next()){
@@ -46,7 +46,7 @@ void Client::loadCloudDrive(){
 			memset(cd_handler, 0, sizeof(struct clouddriver_handler_list) * (res->getInt("num_of_lib") + 1));
 			delete res;
 
-			get_cloud_drive_list->setInt(1, account_id);
+			get_cloud_drive_list->setUInt(1, account_id);
 			res = get_cloud_drive_list->executeQuery();
 
 			cd_root = (struct client_clouddrive_root*) MemManager::allocate(sizeof(struct client_clouddrive_root));
@@ -103,7 +103,7 @@ void Client::loadLogicalDrive(){
 		sql::ResultSet *res;
 		sql::ResultSet *res1;
 
-		get_logical_drive->setInt(1, account_id);
+		get_logical_drive->setUInt(1, account_id);
 		res = get_logical_drive->executeQuery();
 
 		ld_root = (struct client_logical_drive_root*) MemManager::allocate(sizeof(struct client_logical_drive_root));
@@ -167,7 +167,7 @@ void Client::prepareStatement(){
 	check_clouddrive_size = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT `size` - `alloc_size` < ? FROM `logicaldrivecontainer` WHERE `ldid`=? AND `cdid`=? ), 0) as ``");
 	check_logicaldrive_size = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT `a`.`size` - SUM(`b`.`alloc_size`) < ? FROM `logicaldriveinfo` as `a`, `logicaldrivecontainer` as `b` WHERE `a`.`ldid`=? AND `a`.`ldid`=`b`.`ldid` ), 0) as ``");
 	update_chunk_info = MySQL::getCon()->prepareStatement("REPLACE INTO `filechunk` (`ldid`, `cdid`, `fileid`, `seqnum`, `chunk_name`, `size`) VALUE (?,?,?,?,?,?)");
-	update_clouddrive_alloc_size = MySQL::getCon()->prepareStatement("UPDATE `filechunk` SET `size`=`size`+? WHERE `ldid`=? AND `cdid`=?");
+	update_clouddrive_alloc_size = MySQL::getCon()->prepareStatement("UPDATE `logicaldrivecontainer` SET `alloc_size`=`alloc_size`+? WHERE `ldid`=? AND `cdid`=?");
 
 	//	used in 0x22
 	get_file_chunk = MySQL::getCon()->prepareStatement("SELECT * FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
@@ -181,7 +181,7 @@ void Client::prepareStatement(){
 }
 
 void Client::updatePrepareStatementAccount(){
-	check_user_logical_drive->setInt(2, account_id);
+	check_user_logical_drive->setUInt(2, account_id);
 }
 
 void Client::doHandshake(){
@@ -416,11 +416,11 @@ void Client::readCreateFile(){
 
 	info->operationID = *(inBuffer+1);
 
-	check_user_logical_drive->setInt(1, logicalDriveID);
+	check_user_logical_drive->setUInt(1, logicalDriveID);
 	res = check_user_logical_drive->executeQuery();
 	if(res->rowsCount() == 1){
 		delete res;
-		get_next_fileid->setInt(1, logicalDriveID);
+		get_next_fileid->setUInt(1, logicalDriveID);
 		res = get_next_fileid->executeQuery();
 		while(res->next()){
 			info->fileid=res->getUInt64("fileid");
@@ -481,7 +481,7 @@ void Client::readSaveFile(){
 	}
 
 	if(info->chunkSize){
-		check_user_logical_drive->setInt(1, info->ldid);
+		check_user_logical_drive->setUInt(1, info->ldid);
 		res = check_user_logical_drive->executeQuery();
 		if(res->rowsCount() == 1){
 			check_chunk_size->setUInt(1,info->ldid);
@@ -497,16 +497,16 @@ void Client::readSaveFile(){
 			update_chunk_info->setUInt(4,info->seqnum);
 			update_chunk_info->setString(5,info->remoteName);
 			update_chunk_info->setUInt(6,info->chunkSize);
-			update_clouddrive_alloc_size->setUInt(1, info->ldid);
-			update_clouddrive_alloc_size->setUInt(2, info->cdid);
+			update_clouddrive_alloc_size->setUInt(2, info->ldid);
+			update_clouddrive_alloc_size->setUInt(3, info->cdid);
 
 			(res = check_chunk_size->executeQuery())->next();
 			if(diff = res->getUInt64(1) - info->chunkSize){ // chunk size no update != file name no update
 				info->isInsertOK = Client::NO_CHANGE;
 			}else{
-				check_clouddrive_size->setInt64(1,diff);
-				check_logicaldrive_size->setInt64(1,diff);
-				update_clouddrive_alloc_size->setInt64(1, diff);
+				check_clouddrive_size->setUInt64(1,diff);
+				check_logicaldrive_size->setUInt64(1,diff);
+				update_clouddrive_alloc_size->setUInt64(1, diff);
 				delete res;
 				(res = check_clouddrive_size->executeQuery())->next();
 				if(res->getUInt(1)){
@@ -521,7 +521,6 @@ void Client::readSaveFile(){
 					info->isInsertOK = Client::INSERT;
 				}
 			}
-			delete res;
 			// executeUpdate return { 1 == Insert / No Change, 2 == update}
 			if(info->isInsertOK >= Client::NO_CHANGE){
 				info->isInsertOK = update_chunk_info->executeUpdate() - info->isInsertOK;
@@ -547,7 +546,7 @@ void Client::readGetFile(){
 	unsigned long long fileID = Network::toLongLong(inBuffer + 6);
 	sql::ResultSet *res;
 
-	check_user_logical_drive->setInt(1, logicalDriveID);
+	check_user_logical_drive->setUInt(1, logicalDriveID);
 	res = check_user_logical_drive->executeQuery();
 	if(res->rowsCount() == 1){
 		delete res;
