@@ -497,7 +497,7 @@ void Client::readSaveFile(){
 			update_chunk_info->setUInt(4,info->seqnum);
 			update_chunk_info->setString(5,info->remoteName);
 			update_chunk_info->setUInt(6,info->chunkSize);
-			update_clouddrive_alloc_size->setUInt(2, info->ldid);
+			update_clouddrive_alloc_size->setUInt(1, info->ldid);
 			update_clouddrive_alloc_size->setUInt(2, info->cdid);
 
 			(res = check_chunk_size->executeQuery())->next();

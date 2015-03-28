@@ -68,9 +68,10 @@ case 0x04 00000100: server ls dir/file
 
 // file opearation, 0x20 should exist
 
-case 0x20 00100000: client new directory / file
+case 0x20 00100000: client [new / udpate] [directory / file]
 	1 byte int: Operation ID
 	4 byte int: Drive ID
+	8 byte int: File ID
 	8 byte int: Parent ID
 	8 byte int: File size (always 0)
 	1 byte int: File Name length "n"
@@ -78,7 +79,7 @@ case 0x20 00100000: client new directory / file
 
 case 0x20 00100000: server new directory / file
 	1 byte int: Operation ID
-	8 byte int: File ID ( not 0 is file made, 0 is file create fail)
+	8 byte int: File ID ( not 0 is file made/update, 0 is file create fail)
 
 case 0x21 00100001: client put
 	1 byte int: Operation ID
@@ -113,7 +114,6 @@ case 0x23 00100011: server get (chunk)
 	4 byte int: send current packet payload len "n" (Range: 0 - payload len)
 	n byte: part of chunk payload
 
-// if File ID is not empty, do nothing at current stage
 case 0x28 00101000: client delete
 	1 byte int: Operation ID
 	4 byte int: Drive ID
@@ -126,6 +126,15 @@ case 0x28 00101000: server delete
 	8 byte int: File ID
 	1 byte int: file name "n"
 	n byte char: file name
+
+case 0x29 00101000: client clear chunk
+	1 byte int: Operation ID
+	4 byte int: Drive ID
+	8 byte int: File ID
+
+case 0x29 00101000: server clear chunk
+	1 byte int: Operation ID
+	1 byte int: status
 
 // close code,
 case 0x88 10001000: server close connection (server only)
