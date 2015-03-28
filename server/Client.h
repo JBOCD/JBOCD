@@ -114,6 +114,7 @@ class Client{
 		struct client_read_file_info{
 			unsigned char operationID;
 			unsigned int num_of_chunk;
+			unsigned long long size;
 		};
 		// 0x23
 		struct client_read_file{

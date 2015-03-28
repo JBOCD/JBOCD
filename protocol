@@ -106,6 +106,7 @@ case 0x22 00100010: client get
 case 0x22 00100010: server get (info)
 	1 byte int: Operation ID
 	4 byte int: Total number of chunk
+	8 byte int: Total file size
 
 case 0x23 00100011: server get (chunk)
 	1 byte int: Operation ID

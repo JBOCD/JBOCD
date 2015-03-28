@@ -170,7 +170,7 @@ void Client::prepareStatement(){
 	update_clouddrive_alloc_size = MySQL::getCon()->prepareStatement("UPDATE `logicaldrivecontainer` SET `alloc_size`=`alloc_size`+? WHERE `ldid`=? AND `cdid`=?");
 
 	//	used in 0x22
-	get_file_chunk = MySQL::getCon()->prepareStatement("SELECT * FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
+	get_file_chunk = MySQL::getCon()->prepareStatement("SELECT COUNT(`a`.`seqnum`) as `num_of_chunk`, `b`.`size` as `size` FROM `filechunk` as `a`, `directory` as `b` WHERE `a`.`ldid`=? AND `a`.`fileid`=? AND `a`.`ldid`= `b`.`ldid` AND `a`.`fileid`=`b`.`fileid` GROUP BY `b`.`fileid`, `b`.`size`");
 
 	//	used in 0x28
 	del_file = MySQL::getCon()->prepareStatement("DELETE FROM `directory` WHERE `ldid`=? AND `fileid`=?");
@@ -553,10 +553,11 @@ void Client::readGetFile(){
 
 		get_file_chunk->setUInt(1, logicalDriveID); // get_file_chunk is undefine
 		get_file_chunk->setUInt64(2, fileID);
-		res = get_file_chunk->executeQuery();
+		(res = get_file_chunk->executeQuery())->next();
 
 		info->operationID = *(inBuffer + 1);
-		info->num_of_chunk = res->rowsCount();
+		info->num_of_chunk = res->getUInt('num_of_chunk');
+		info->size = res->getUInt64('size');
 		Client::addResponseQueue(0x22, (void*) info);
 
 		while(res->next()){
@@ -883,8 +884,9 @@ void Client::sendGetFileInfo(void* a){
 	*outBuffer = 0x22;
 	*(outBuffer+1) = info->operationID;
 	Network::toBytes(info->num_of_chunk, outBuffer + 2);
+	Network::toBytes(info->size, outBuffer + 6);
 
-	SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 6));
+	SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 14));
 	MemManager::free(info);
 }
 // 0x23
