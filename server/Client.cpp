@@ -891,7 +891,7 @@ void Client::sendGetFileInfo(void* a){
 void Client::sendGetFileChunk(void* a){
 	struct client_read_file* info = (struct client_read_file*) a;
 	unsigned long long maxRead = WebSocket::getRemainBufferSize(14);
-	unsigned long long readBytes;
+	unsigned int readBytes;
 	unsigned int totalReadBytes=0;
 	int fd = FileManager::open(info->tmpFile, 'r');
 	*outBuffer = 0x23;
