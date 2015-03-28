@@ -556,8 +556,8 @@ void Client::readGetFile(){
 		(res = get_file_chunk->executeQuery())->next();
 
 		info->operationID = *(inBuffer + 1);
-		info->num_of_chunk = res->getUInt('num_of_chunk');
-		info->size = res->getUInt64('size');
+		info->num_of_chunk = res->getUInt("num_of_chunk");
+		info->size = res->getUInt64("size");
 		Client::addResponseQueue(0x22, (void*) info);
 
 		while(res->next()){
