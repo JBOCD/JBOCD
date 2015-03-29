@@ -81,12 +81,12 @@ class Client{
 			unsigned long long fileid;
 			unsigned long long fileSize;
 			char* name;
-			unsigned int ldid;
 			struct client_list* next;
 		};
 		struct client_list_root{
 			unsigned char operationID;
 			unsigned short numberOfFile;
+			unsigned int ldid;
 			struct client_list* root;
 		};
 
@@ -239,7 +239,7 @@ class Client{
 
 		void processSaveFile(void *arg);
 		void processGetFileChunk(void *arg);
-		void processDelFile(void *arg);
+		void processDelChunk(void *arg);
 
 		void sendLogin(unsigned char command, void* a);
 		void sendGetCloudDrive();
@@ -250,6 +250,7 @@ class Client{
 		void sendGetFileInfo(void* a);
 		void sendGetFileChunk(void* a);
 		void sendDelFile(void* a);
+		void sendDelChunk(void* a);
 	public:
 		Client();
 		~Client();

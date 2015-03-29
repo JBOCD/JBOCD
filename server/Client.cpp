@@ -412,16 +412,16 @@ void Client::readCreateFile(){
 	info->ldid = Network::toInt(inBuffer+2);
 	info->name = (char*) Network::toChars(inBuffer+22);
 
-	if(checkLogicalDrive(ldid)){
-		get_next_fileid->setUInt(1, ldid);
+	if(checkLogicalDrive(info->ldid)){
+		get_next_fileid->setUInt(1, info->ldid);
 		res = get_next_fileid->executeQuery();
 		while(res->next()){
 			info->fileid=res->getUInt64("fileid");
 
-			create_file->setUInt(1, ldid);
+			create_file->setUInt(1, info->ldid);
 			create_file->setUInt64(2, Network::toLongLong(inBuffer+6)); // what if parentID not exist in database?
 			create_file->setUInt64(3, info->fileid);
-			create_file->setString(4, name);
+			create_file->setString(4, info->name);
 			create_file->setUInt64(5, Network::toLongLong(inBuffer+14));
 			if(!create_file->executeUpdate()){
 				info->fileid = 0;
@@ -582,7 +582,7 @@ void Client::readDelFile(){
 	unsigned long long fileid = Network::toLongLong(inBuffer + 6) ;
 	unsigned long long *fileList;
 	int i;
-	
+
 	if(checkLogicalDrive(ldid)){
 		get_file->setUInt( 1, ldid );
 		get_file->setUInt64( 2, fileid );
@@ -648,7 +648,7 @@ void Client::readDelChunk(){
 	info->ldid = Network::toInt(inBuffer + 2);
 	info->fileid = Network::toLongLong(inBuffer + 6) ;
 
-	if(checkLogicalDrive(ldid)){
+	if(checkLogicalDrive(info->ldid)){
 		get_all_chunk->setUInt(1, info->ldid);
 		get_all_chunk->setUInt64(2, info->fileid);
 		res = get_all_chunk->executeQuery();
