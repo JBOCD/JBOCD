@@ -81,6 +81,7 @@ class Client{
 			unsigned long long fileid;
 			unsigned long long fileSize;
 			char* name;
+			unsigned int ldid;
 			struct client_list* next;
 		};
 		struct client_list_root{
@@ -92,7 +93,9 @@ class Client{
 		// 0x20
 		struct client_make_file{
 			unsigned char operationID;
+			unsigned int ldid;
 			unsigned long long fileid;
+			char* name;
 		};
 
 		// 0x21
@@ -115,6 +118,8 @@ class Client{
 			unsigned char operationID;
 			unsigned int num_of_chunk;
 			unsigned long long size;
+			unsigned int ldid;
+			unsigned long long fileID;
 		};
 		// 0x23
 		struct client_read_file{
@@ -135,11 +140,12 @@ class Client{
 			unsigned int cdid;
 			char* chunkName;
 		};
-
+		// 0x28, 0x29
 		struct client_del_file{
 			Client* object;
 			void (Client::*fptr)(void*);
 			unsigned char operationID;
+			unsigned char command;
 			unsigned int ldid;
 			unsigned long long parentid;
 			unsigned long long fileid;
@@ -178,7 +184,6 @@ class Client{
 		pthread_mutex_t res_queue_mutex;
 
 // prepareStatement List
-		sql::PreparedStatement* check_user_logical_drive;
 		sql::PreparedStatement* get_cloud_drive_list;
 		sql::PreparedStatement* get_number_of_library;
 		sql::PreparedStatement* get_list;
@@ -196,6 +201,8 @@ class Client{
 		sql::PreparedStatement* get_all_chunk;
 		sql::PreparedStatement* remove_chunk;
 
+		sql::ResultSet *res;
+
 // const
 		// file chunk upload / update
 		static const unsigned char UPDATE;
@@ -205,13 +212,14 @@ class Client{
 		static const unsigned char CHUNK_SIZE_EXCEED_LD_LIMIT;
 		static const unsigned char CHUNK_SIZE_ZERO_EXCEPTION;
 		static const unsigned char CD_NOT_IN_LD;
+		static const unsigned char PERMISSION_DENY;
 
 // function
 		void loadCloudDrive();
 		void loadLogicalDrive();
+		bool checkLogicalDrive(unsigned int ldid);
 
 		void prepareStatement();
-		void updatePrepareStatementAccount();
 		void doHandshake();
 
 		void commandInterpreter();
@@ -227,6 +235,7 @@ class Client{
 		void readSaveFile();
 		void readGetFile();
 		void readDelFile();
+		void readDelChunk();
 
 		void processSaveFile(void *arg);
 		void processGetFileChunk(void *arg);
@@ -255,6 +264,7 @@ const unsigned char Client::CHUNK_SIZE_EXCEED_CD_LIMIT = -1;
 const unsigned char Client::CHUNK_SIZE_EXCEED_LD_LIMIT = -2;
 const unsigned char Client::CHUNK_SIZE_ZERO_EXCEPTION = -3;
 const unsigned char Client::CD_NOT_IN_LD = -4;
+const unsigned char Client::PERMISSION_DENY = -5;
 
 #include "Client.cpp"
 

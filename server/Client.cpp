@@ -11,7 +11,6 @@ Client::Client(){
 	account_id = 0;
 
 	Client::prepareStatement();
-	Client::updatePrepareStatementAccount();
 	Client::doHandshake();
 
 	pthread_mutex_init(&res_mutex, NULL);
@@ -25,7 +24,6 @@ void Client::loadCloudDrive(){
 	if(!cd_root){
 		sql::PreparedStatement* get_cloud_drive_list = MySQL::getCon()->prepareStatement("SELECT `a`.`cdid` as `cdid`, `a`.`lid` as `lid`, `b`.`dir` as `classname` FROM `clouddrive` as `a`, `libraries` as `b` WHERE `a`.`uid`=? AND `a`.`lid`=`b`.`id`");
 		sql::PreparedStatement* get_number_of_library = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT COUNT(DISTINCT `lid`) FROM `clouddrive` WHERE `uid`=?),0) as `num_of_lib`");
-		sql::ResultSet* res;
 		sql::ResultSet* res1;
 		sql::Statement* stmt;
 
@@ -100,7 +98,6 @@ void Client::loadLogicalDrive(){
 		struct client_clouddrive* cd_last;
 		sql::PreparedStatement* get_logical_drive = MySQL::getCon()->prepareStatement("SELECT * FROM `logicaldriveinfo` WHERE `uid`=?");
 		sql::PreparedStatement* get_cloud_drive_by_ldid = MySQL::getCon()->prepareStatement("SELECT * FROM `logicaldrivecontainer` WHERE `ldid`=?");
-		sql::ResultSet *res;
 		sql::ResultSet *res1;
 
 		get_logical_drive->setUInt(1, account_id);
@@ -150,10 +147,17 @@ void Client::loadLogicalDrive(){
 	}
 }
 
-void Client::prepareStatement(){
+bool Client::checkLogicalDrive(unsigned int ldid){
+	bool result = false;
+	struct client_logical_drive* ld;
+	if(!ld_root){
+		for(ld = ld_root->root; ld && ld->ldid != ldid; ld = ld->next)
+		result = !!ld;
+	}
+	return result;
+}
 
-	//	used in permission checking
-	check_user_logical_drive = MySQL::getCon()->prepareStatement("SELECT * FROM `logicaldriveinfo` WHERE `ldid`=? AND `uid`=?");
+void Client::prepareStatement(){
 
 	//	used in 0x04
 	get_list = MySQL::getCon()->prepareStatement("SELECT * FROM `directory` WHERE `ldid`=? AND `parentid`=?");
@@ -180,15 +184,10 @@ void Client::prepareStatement(){
 	remove_chunk = MySQL::getCon()->prepareStatement("DELETE FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
 }
 
-void Client::updatePrepareStatementAccount(){
-	check_user_logical_drive->setUInt(2, account_id);
-}
-
 void Client::doHandshake(){
 //	if not using websocket, how to confirm message exact size in our protocol?
-	int packageLen = SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE);
-	if(packageLen == 1){
-		packageLen = SecureSocket::recv(inBuffer+1, WebSocket::MAX_PACKAGE_SIZE-1);
+	if(SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE) == 1){
+		SecureSocket::recv(inBuffer+1, WebSocket::MAX_PACKAGE_SIZE-1);
 	}
 	SecureSocket::send(outBuffer, WebSocket::getHandShakeResponse(inBuffer, outBuffer, &err));
 }
@@ -244,6 +243,9 @@ void Client::commandInterpreter(){
 					break;
 				case 0x28:
 					Client::readDelFile();
+					break;
+				case 0x29:
+					Client::readDelChunk();
 					break;
 				case 0x88:
 					Client::addResponseQueue(0x88, NULL);
@@ -311,6 +313,9 @@ void Client::responseThread(void* arg){
 				case 0x28:
 					Client::sendDelFile(tmp->info);
 					break;
+				case 0x29:
+					Client::sendDelChunk(tmp->info);
+					break;
 				case 0x88:
 					SecureSocket::send(outBuffer, WebSocket::close(outBuffer));
 					isEnd = true;
@@ -332,7 +337,6 @@ void Client::readLogin(){
 	struct client_list_root* info = (struct client_list_root*) MemManager::allocate(sizeof(struct client_list_root));
 	char* token = (char*) inBuffer+6;
 	sql::PreparedStatement* pstmt;
-	sql::ResultSet *res;
 
 	token[128]=0;
 	info->operationID = *(inBuffer+1);
@@ -349,7 +353,6 @@ void Client::readLogin(){
 //		pstmt->setUInt(1, account_id);
 //		pstmt->executeUpdate();
 
-		Client::updatePrepareStatementAccount();
 		Client::loadCloudDrive();
 		Client::loadLogicalDrive();
 	}else{
@@ -373,18 +376,14 @@ void Client::readGetDrive(){
 void Client::readList(){
 	struct client_list_root* info = (struct client_list_root*) MemManager::allocate(sizeof(struct client_list_root));
 	struct client_list* tmp;
-	unsigned int ldid = Network::toInt(inBuffer+2);
-	unsigned long long parentid = Network::toLongLong(inBuffer+6);
-	sql::ResultSet *res;
+
 	info->operationID = *(inBuffer+1);
+	info->ldid = Network::toInt(inBuffer+2);
 	info->root = NULL;
 	info->numberOfFile = 0;
-	check_user_logical_drive->setUInt(1, ldid);
-	res = check_user_logical_drive->executeQuery();
-	if(res->rowsCount() == 1){
-		delete res;
-		get_list->setUInt(1, ldid);
-		get_list->setUInt64(2, parentid);
+	if(checkLogicalDrive(info->ldid)){
+		get_list->setUInt(1, info->ldid);
+		get_list->setUInt64(2, Network::toLongLong(inBuffer+6));
 		res = get_list->executeQuery();
 		info->numberOfFile = res->rowsCount();
 		while(res->next()){
@@ -400,54 +399,46 @@ void Client::readList(){
 			tmp->name = (char*) MemManager::allocate(strlen(res->getString("name")->c_str())+1);
 			strcpy(tmp->name, res->getString("name")->c_str());
 		}
+		delete res;
 	}
-	delete res;
 
 	Client::addResponseQueue(0x04, (void*)info);
 }
 // 0x20 //done
 void Client::readCreateFile(){
 	struct client_make_file* info = (struct client_make_file*) MemManager::allocate(sizeof(struct client_make_file));
-	unsigned int logicalDriveID = Network::toInt(inBuffer+2);
-	unsigned long long parentID = Network::toLongLong(inBuffer+6);
-	unsigned long long fileSize = Network::toLongLong(inBuffer+14);
-	char* name = (char*) Network::toChars(inBuffer+22);
-	sql::ResultSet *res;
 
 	info->operationID = *(inBuffer+1);
+	info->ldid = Network::toInt(inBuffer+2);
+	info->name = (char*) Network::toChars(inBuffer+22);
 
-	check_user_logical_drive->setUInt(1, logicalDriveID);
-	res = check_user_logical_drive->executeQuery();
-	if(res->rowsCount() == 1){
-		delete res;
-		get_next_fileid->setUInt(1, logicalDriveID);
+	if(checkLogicalDrive(ldid)){
+		get_next_fileid->setUInt(1, ldid);
 		res = get_next_fileid->executeQuery();
 		while(res->next()){
 			info->fileid=res->getUInt64("fileid");
 
-			create_file->setUInt(1, logicalDriveID);
-			create_file->setUInt64(2, parentID); // what if parentID not exist in database?
+			create_file->setUInt(1, ldid);
+			create_file->setUInt64(2, Network::toLongLong(inBuffer+6)); // what if parentID not exist in database?
 			create_file->setUInt64(3, info->fileid);
 			create_file->setString(4, name);
-			create_file->setUInt64(5, fileSize);
+			create_file->setUInt64(5, Network::toLongLong(inBuffer+14));
 			if(!create_file->executeUpdate()){
 				info->fileid = 0;
 			}
 			break;
 		}
+		delete res;
 	}
-	delete res;
 	Client::addResponseQueue(0x20, (void*) info);
 }
 // 0x21 //done
 void Client::readSaveFile(){
-	sql::ResultSet *res;
-
 	struct client_save_file* info = (struct client_save_file*) MemManager::allocate(sizeof(struct client_save_file));
 	unsigned short bufShift = 0;
 	unsigned long long maxSaveSize;
 	int fd;
-	long long diff;
+	unsigned long long diff;
 
 	info->object = this;
 	info->fptr = &Client::processSaveFile;
@@ -480,10 +471,8 @@ void Client::readSaveFile(){
 		recvLen -= SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE > recvLen ? recvLen : WebSocket::MAX_PACKAGE_SIZE);
 	}
 
-	if(info->chunkSize){
-		check_user_logical_drive->setUInt(1, info->ldid);
-		res = check_user_logical_drive->executeQuery();
-		if(res->rowsCount() == 1){
+	if(checkLogicalDrive(ldid)){
+		if(info->chunkSize){
 			check_chunk_size->setUInt(1,info->ldid);
 			check_chunk_size->setUInt(2,info->cdid);
 			check_chunk_size->setUInt64(3,info->fileid);
@@ -528,15 +517,18 @@ void Client::readSaveFile(){
 			if(info->isInsertOK >= Client::NO_CHANGE){
 				info->isInsertOK = update_chunk_info->executeUpdate() - info->isInsertOK;
 			}
-		}
-		delete res;
-		if(info->isInsertOK >= Client::NO_CHANGE){
-			Thread::create(&Client::_thread_redirector, (void*) info);
+			delete res;
+			if(info->isInsertOK >= Client::NO_CHANGE){
+				Thread::create(&Client::_thread_redirector, (void*) info);
+			}else{
+				Client::addResponseQueue(0x21, info);
+			}
 		}else{
+			info->isInsertOK = Client::CHUNK_SIZE_ZERO_EXCEPTION;
 			Client::addResponseQueue(0x21, info);
 		}
 	}else{
-		info->isInsertOK = Client::CHUNK_SIZE_ZERO_EXCEPTION;
+		info->isInsertOK = Client::PERMISSION_DENY;
 		Client::addResponseQueue(0x21, info);
 	}
 }
@@ -545,19 +537,14 @@ void Client::readSaveFile(){
 void Client::readGetFile(){
 	struct client_read_file_info* info = (struct client_read_file_info*) MemManager::allocate(sizeof(struct client_read_file_info));;
 	struct client_read_file* chunk_info;
-	unsigned int logicalDriveID = Network::toInt(inBuffer + 2);
-	unsigned long long fileID = Network::toLongLong(inBuffer + 6);
-	sql::ResultSet *res;
 
 	info->operationID = *(inBuffer + 1);
+	info->ldid = Network::toInt(inBuffer + 2);
+	info->fileID = Network::toLongLong(inBuffer + 6);
 
-	check_user_logical_drive->setUInt(1, logicalDriveID);
-	res = check_user_logical_drive->executeQuery();
-	if(res->rowsCount() == 1){
-		delete res;
-
-		get_file_chunk->setUInt(1, logicalDriveID); // get_file_chunk is undefine
-		get_file_chunk->setUInt64(2, fileID);
+	if(checkLogicalDrive(info->ldid)){
+		get_file_chunk->setUInt(1, info->ldid);
+		get_file_chunk->setUInt64(2, info->fileID);
 		if((res = get_file_chunk->executeQuery())->next()){
 
 			info->num_of_chunk = res->getUInt("num_of_chunk");
@@ -569,9 +556,9 @@ void Client::readGetFile(){
 				chunk_info->object = this;
 				chunk_info->fptr = &Client::processGetFileChunk;
 				chunk_info->operationID = *(inBuffer + 1);
-				chunk_info->ldid = logicalDriveID;
+				chunk_info->ldid = info->ldid;
 				chunk_info->cdid = res->getUInt("cdid");
-				chunk_info->fileid = fileID;
+				chunk_info->fileid = info->fileID;
 				chunk_info->seqnum = res->getUInt("seqnum");
 				chunk_info->chunkSize = res->getUInt("size");
 
@@ -585,8 +572,8 @@ void Client::readGetFile(){
 			info->size = 0;
 			Client::addResponseQueue(0x22, (void*) info);
 		}
+		delete res;
 	}
-	delete res;
 }
 // 0x28 //done
 void Client::readDelFile(){
@@ -595,26 +582,73 @@ void Client::readDelFile(){
 	unsigned long long fileid = Network::toLongLong(inBuffer + 6) ;
 	unsigned long long *fileList;
 	int i;
-	sql::ResultSet *res;
-	get_file->setUInt( 1, ldid );
-	get_file->setUInt64( 2, fileid );
-	res = get_file->executeQuery();
-	if(res->next()){
-		info = (struct client_del_file*) MemManager::allocate(sizeof(struct client_del_file));
-		info->object = this;
-		info->fptr = &Client::processDelFile;
-		info->operationID = *(inBuffer+1);
-		info->ldid = ldid;
-		info->parentid = res->getUInt("parentid");
-		info->fileid = fileid;
-		info->name = (char*) MemManager::allocate( strlen( res->getString("name").c_str() ) + 1 );
-		strcpy(info->name, res->getString("name")->c_str());
+	
+	if(checkLogicalDrive(ldid)){
+		get_file->setUInt( 1, ldid );
+		get_file->setUInt64( 2, fileid );
+		res = get_file->executeQuery();
+		if(res->next()){
+			info = (struct client_del_file*) MemManager::allocate(sizeof(struct client_del_file));
+			info->command = 0x28;
+			info->object = this;
+			info->fptr = &Client::processDelChunk;
+			info->operationID = *(inBuffer+1);
+			info->ldid = ldid;
+			info->parentid = res->getUInt("parentid");
+			info->fileid = fileid;
+			info->name = (char*) MemManager::allocate( strlen( res->getString("name").c_str() ) + 1 );
+			strcpy(info->name, res->getString("name")->c_str());
 
-		del_file->setUInt( 1, ldid );
-		del_file->setUInt64( 2, fileid );
-		del_file->executeUpdate();
+			del_file->setUInt( 1, ldid );
+			del_file->setUInt64( 2, fileid );
+			del_file->executeUpdate();
 
+			delete res;
+			get_all_chunk->setUInt(1, info->ldid);
+			get_all_chunk->setUInt64(2, info->fileid);
+			res = get_all_chunk->executeQuery();
+			info->list = (struct client_del_chunk_array*)MemManager::allocate(sizeof(struct client_del_chunk_array) * (res->rowsCount() + 1) );
+			for(i=0;res->next();i++){
+				info->list[i].cdid = res->getUInt("cdid");
+				info->list[i].chunkName = (char*) MemManager::allocate( strlen( res->getString("chunk_name").c_str() ) + 1 );
+				strcpy(info->list[i].chunkName, res->getString("chunk_name")->c_str());
+			}
+			memset(info->list + i, 0, sizeof(struct client_del_chunk_array));
+			remove_chunk->setUInt(1, info->ldid);
+			remove_chunk->setUInt64(2, info->fileid);
+			remove_chunk->executeUpdate();
+			Thread::create(&Client::_thread_redirector, (void*) info);
+		}
 		delete res;
+
+		get_child->setUInt( 1, ldid );
+		get_child->setUInt64( 2, fileid );
+		res = get_child->executeQuery();
+		fileList = (unsigned long long*) MemManager::allocate(sizeof(unsigned long long) * ( res->rowsCount() + 1 ) );
+		for(i=0; res->next(); i++){
+			fileList[i] = res->getUInt64("fileid");
+		}
+		fileList[i]=0;
+		delete res;
+		for(i=0; fileList[i]; i++){
+			Network::toBytes(fileList[i], inBuffer + 6);
+			Client::readDelFile();
+		}
+	}
+}
+// 0x29 //done
+void Client::readDelChunk(){
+	struct client_del_file* info = (struct client_del_file*) MemManager::allocate(sizeof(struct client_del_file));
+	int i;
+
+	info->command = 0x29;
+	info->operationID = *(inBuffer+1);
+	info->object = this;
+	info->fptr = &Client::processDelChunk;
+	info->ldid = Network::toInt(inBuffer + 2);
+	info->fileid = Network::toLongLong(inBuffer + 6) ;
+
+	if(checkLogicalDrive(ldid)){
 		get_all_chunk->setUInt(1, info->ldid);
 		get_all_chunk->setUInt64(2, info->fileid);
 		res = get_all_chunk->executeQuery();
@@ -626,26 +660,12 @@ void Client::readDelFile(){
 		}
 		memset(info->list + i, 0, sizeof(struct client_del_chunk_array));
 		delete res;
-		res = NULL;
 		remove_chunk->setUInt(1, info->ldid);
 		remove_chunk->setUInt64(2, info->fileid);
 		remove_chunk->executeUpdate();
 		Thread::create(&Client::_thread_redirector, (void*) info);
-	}
-
-	if(res) delete res;
-	get_child->setUInt( 1, ldid );
-	get_child->setUInt64( 2, fileid );
-	res = get_child->executeQuery();
-	fileList = (unsigned long long*) MemManager::allocate(sizeof(unsigned long long) * ( res->rowsCount() + 1 ) );
-	for(i=0; res->next(); i++){
-		fileList[i] = res->getUInt64("fileid");
-	}
-	fileList[i]=0;
-	delete res;
-	for(i=0; fileList[i]; i++){
-		Network::toBytes(fileList[i], inBuffer + 6);
-		Client::readDelFile();
+	}else{
+		MemManager::free(info);
 	}
 }
 
@@ -729,7 +749,7 @@ void Client::processGetFileChunk(void *arg){
 	Client::addResponseQueue(0x23, info);
 }
 // 0x28
-void Client::processDelFile(void *arg){
+void Client::processDelChunk(void *arg){
 	struct client_del_file* info = (struct client_del_file*) arg;
 	struct client_logical_drive* ld;
 
@@ -763,10 +783,9 @@ void Client::processDelFile(void *arg){
 			// not zero mean fail
 		}
 	}
-	MemManager::free(info->list);
 	MemManager::free(remotePath);
 
-	Client::addResponseQueue(0x28, info);
+	Client::addResponseQueue(info->command, info);
 }
 
 /* Send Result */
@@ -870,6 +889,8 @@ void Client::sendCreateFile(void* a){
 	*(outBuffer+1) = info->operationID;
 	Network::toBytes(info->fileid, outBuffer+2);
 	SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 10));
+	
+	MemManager::free(info->name);
 	MemManager::free(info);
 }
 // 0x21
@@ -931,6 +952,7 @@ void Client::sendGetFileChunk(void* a){
 // 0x28
 void Client::sendDelFile(void* a){
 	struct client_del_file* info = (struct client_del_file*) a;
+	int i;
 	*outBuffer = 0x28;
 	*(outBuffer+1) = info->operationID;
 	Network::toBytes(info->ldid, outBuffer + 2);
@@ -940,6 +962,25 @@ void Client::sendDelFile(void* a){
 
 	SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 23+strlen(info->name)));
 	MemManager::free(info->name);
+
+	for(i=0;info->list[i].cdid;i++){
+		MemManager::free(info->list[i].chunkName);
+	}
+	MemManager::free(info->list);
+	MemManager::free(info);
+
+}
+// 0x29
+void Client::sendDelChunk(void* a){
+	struct client_del_file* info = (struct client_del_file*) a;
+	int i;
+	*outBuffer = 0x28;
+	*(outBuffer+1) = info->operationID;
+
+	for(i=0;info->list[i].cdid;i++){
+		MemManager::free(info->list[i].chunkName);
+	}
+	MemManager::free(info->list);
 	MemManager::free(info);
 
 }
@@ -957,7 +998,6 @@ Client::~Client(){
 
 	pthread_join(responseThread_tid, NULL);
 
-	delete check_user_logical_drive;
 	delete get_cloud_drive_list;
 	delete get_number_of_library;
 	delete get_list;

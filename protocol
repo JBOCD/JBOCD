@@ -135,7 +135,6 @@ case 0x29 00101000: client clear chunk
 
 case 0x29 00101000: server clear chunk
 	1 byte int: Operation ID
-	1 byte int: status
 
 // close code,
 case 0x88 10001000: server close connection (server only)
