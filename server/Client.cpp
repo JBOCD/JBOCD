@@ -471,7 +471,7 @@ void Client::readSaveFile(){
 		recvLen -= SecureSocket::recv(inBuffer, WebSocket::MAX_PACKAGE_SIZE > recvLen ? recvLen : WebSocket::MAX_PACKAGE_SIZE);
 	}
 
-	if(checkLogicalDrive(ldid)){
+	if(checkLogicalDrive(info->ldid)){
 		if(info->chunkSize){
 			check_chunk_size->setUInt(1,info->ldid);
 			check_chunk_size->setUInt(2,info->cdid);
