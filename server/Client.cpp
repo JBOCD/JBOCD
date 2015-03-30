@@ -929,7 +929,7 @@ void Client::sendGetFileChunk(void* a){
 			if(readBytes > 0){
 				totalReadBytes += readBytes;
 				Network::toBytes(readBytes, outBuffer + 10);
-				SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, readBytes+14));
+				WebSocket::sendMsg(outBuffer, readBytes+14);
 			}
 			Network::toBytes(totalReadBytes, outBuffer + 6);
 		}

@@ -22,7 +22,7 @@ void WebSocket::setSendHandle(int (* fun)(const void *, int )){
 }
 bool WebSocket::accept(unsigned char* inBuffer, unsigned char* outBuffer, int *err){
 	if((*recv)(inBuffer, WebSocket::MAX_PACKAGE_SIZE) == 1){
-		(*recv)(inBuffer+1, WebSocket::MAX_PACKAGE_SIZE)
+		(*recv)(inBuffer+1, WebSocket::MAX_PACKAGE_SIZE);
 	}
 	(*send)(outBuffer, WebSocket::getHandShakeResponse(inBuffer, outBuffer, err));
 	return *err;
@@ -98,25 +98,25 @@ unsigned int WebSocket::recvMsg(unsigned char* buf, int* err){
 		buf[0] = 0x88;
 		buf[1] = 0;
 		readLen = 1;
-		*payloadLen = 1;
+		payloadLen = 1;
 		err && (*err |= ERR_WRONG_WS_PROTOCOL);
 	}else{
 		isFin = !!(*buf & 0x80);
 		payloadLen = (unsigned long long) (buf[1] & 0x7F);
 		if(payloadLen < 126){
-			memcpy(                   &maskKey     , buf+2, 4);
-			memcpy( ((unsigned char*) &maskKey) + 4, buf+2, 4);
+			memcpy(                   &maskKey     , buf + 2, 4);
+			memcpy( ((unsigned char*) &maskKey) + 4, buf + 2, 4);
 			decode((unsigned long long*) (buf+6), (unsigned long long*) (buf), maskKey, readLen-=6);
 		}else if(payloadLen == 126){
 			payloadLen = Network::toShort(buf+2);
-			memcpy(                   &maskKey     , buf+4, 4);
-			memcpy( ((unsigned char*) &maskKey) + 4, buf+4, 4);
+			memcpy(                   &maskKey     , buf + 4, 4);
+			memcpy( ((unsigned char*) &maskKey) + 4, buf + 4, 4);
 			decode((unsigned long long*) (buf+8), (unsigned long long*) (buf), maskKey, readLen-=8);
 		}else{
 			buf[2] &= 0x7F;
 			payloadLen=Network::toLongLong(buf+2);
-			memcpy(                   &maskKey     , buf+10, 4);
-			memcpy( ((unsigned char*) &maskKey) + 4, buf+10, 4);
+			memcpy(                   &maskKey     , buf + 10, 4);
+			memcpy( ((unsigned char*) &maskKey) + 4, buf + 10, 4);
 			decode((unsigned long long*) (buf+14), (unsigned long long*) (buf), maskKey, readLen-=14);
 		}
 		payloadLen -= readLen;
@@ -155,8 +155,8 @@ void WebSocket::decode(unsigned long long* in, unsigned long long* out, unsigned
 	}
 
 	if(j=len%8){
-		memcpy(                   maskKey    , ((unsigned char*)&tmp)+j, 8-j);
-		memcpy( ((unsigned char*) maskKey+8-j,                  &tmp   , j  );
+		memcpy(                   &maskKey         , ((unsigned char*) &tmp) + j, 8-j);
+		memcpy( ((unsigned char*) &maskKey) + 8-j,                     &tmp     , j  );
 	}
 }
 
