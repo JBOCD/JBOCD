@@ -63,7 +63,7 @@ unsigned int WebSocket::readLen = 0;
 unsigned long long WebSocket::maskKey = 0;
 unsigned long long WebSocket::payloadLen = 0;
 int (* WebSocket::recv)(void *, int) = NULL;
-int (* WebSocket::send)(void *, int) = NULL;
+int (* WebSocket::send)(const void *, int) = NULL;
 
 #include "WebSocket.cpp"
 
