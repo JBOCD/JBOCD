@@ -12,6 +12,7 @@ Client::Client(){
 
 	Client::prepareStatement();
 	Client::doHandshake();
+setbuf(stdout, NULL);// debug
 
 	pthread_mutex_init(&res_mutex, NULL);
 	pthread_mutex_init(&res_queue_mutex, NULL);
@@ -150,8 +151,9 @@ void Client::loadLogicalDrive(){
 bool Client::checkLogicalDrive(unsigned int ldid){
 	bool result = false;
 	struct client_logical_drive* ld;
-	if(!ld_root){
-		for(ld = ld_root->root; ld && ld->ldid != ldid; ld = ld->next)
+
+	if(ld_root){
+		for(ld = ld_root->root; ld && ld->ldid != ldid; ld = ld->next);
 		result = !!ld;
 	}
 	return result;
@@ -176,11 +178,14 @@ void Client::prepareStatement(){
 	//	used in 0x22
 	get_file_chunk = MySQL::getCon()->prepareStatement("SELECT COUNT(`a`.`seqnum`) as `num_of_chunk`, `b`.`size` as `size` FROM `filechunk` as `a`, `directory` as `b` WHERE `a`.`ldid`=? AND `a`.`fileid`=? AND `a`.`ldid`= `b`.`ldid` AND `a`.`fileid`=`b`.`fileid` GROUP BY `b`.`fileid`, `b`.`size`");
 
+	//	used in 0x22, 0x28, 0x29
+	get_all_chunk = MySQL::getCon()->prepareStatement("SELECT * FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
+
 	//	used in 0x28
 	del_file = MySQL::getCon()->prepareStatement("DELETE FROM `directory` WHERE `ldid`=? AND `fileid`=?");
 	get_file = MySQL::getCon()->prepareStatement("SELECT * FROM `directory` WHERE `ldid`=? AND `fileid`=?");
 	get_child = MySQL::getCon()->prepareStatement("SELECT * FROM `directory` WHERE `ldid`=? AND `parentid`=?");
-	get_all_chunk = MySQL::getCon()->prepareStatement("SELECT * FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
+	//	used in 0x28, 0x29
 	remove_chunk = MySQL::getCon()->prepareStatement("DELETE FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
 }
 
@@ -352,13 +357,13 @@ void Client::readLogin(){
 //		pstmt = MySQL::getCon()->prepareStatement("DELETE FROM `token` WHERE `id`=?");
 //		pstmt->setUInt(1, account_id);
 //		pstmt->executeUpdate();
-
+		delete res;
 		Client::loadCloudDrive();
 		Client::loadLogicalDrive();
 	}else{
 		account_id=0;
+		delete res;
 	}
-	delete res;
 	delete pstmt;
 	Client::addResponseQueue(!!account_id /* 0x00 || 0x01 */ , info);
 }
@@ -382,6 +387,7 @@ void Client::readList(){
 	info->root = NULL;
 	info->numberOfFile = 0;
 	if(checkLogicalDrive(info->ldid)){
+
 		get_list->setUInt(1, info->ldid);
 		get_list->setUInt64(2, Network::toLongLong(inBuffer+6));
 		res = get_list->executeQuery();
@@ -417,7 +423,6 @@ void Client::readCreateFile(){
 		res = get_next_fileid->executeQuery();
 		while(res->next()){
 			info->fileid=res->getUInt64("fileid");
-
 			create_file->setUInt(1, info->ldid);
 			create_file->setUInt64(2, Network::toLongLong(inBuffer+6)); // what if parentID not exist in database?
 			create_file->setUInt64(3, info->fileid);
@@ -455,6 +460,7 @@ void Client::readSaveFile(){
 	bufShift = 27 + *(inBuffer + 22); // 22 + 1 + name.length + 4
 	info->chunkSize = (maxSaveSize = Network::toInt(inBuffer + bufShift - 4));
 	info->tmpFile = FileManager::newTemp(info->chunkSize);
+
 
 	fd = FileManager::open(info->tmpFile, 'w');
 	write(fd, inBuffer + bufShift, readLen - bufShift);
@@ -550,7 +556,10 @@ void Client::readGetFile(){
 			info->num_of_chunk = res->getUInt("num_of_chunk");
 			info->size = res->getUInt64("size");
 			Client::addResponseQueue(0x22, (void*) info);
-
+			delete res;
+			get_all_chunk->setUInt(1, info->ldid);
+			get_all_chunk->setUInt64(2, info->fileID);
+			res = get_all_chunk->executeQuery();
 			while(res->next()){
 				chunk_info = (struct client_read_file*) MemManager::allocate(sizeof(struct client_read_file));
 				chunk_info->object = this;
