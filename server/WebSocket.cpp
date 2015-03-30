@@ -123,7 +123,7 @@ unsigned int WebSocket::recvMsg(unsigned char* buf, int* err){
 	}
 	return readLen;
 }
-int WebSocket::sendMsg(unsigned char* buf, unsigned long long len){
+unsigned int WebSocket::sendMsg(unsigned char* buf, unsigned long long len){
 	int insertLen;
 
 	if(len<126){
@@ -141,7 +141,7 @@ int WebSocket::sendMsg(unsigned char* buf, unsigned long long len){
 	buf[0]=0x82;
 	return (*send)(buf, len+insertLen);
 }
-int WebSocket::close(unsigned char* buf){
+unsigned int WebSocket::close(unsigned char* buf){
 	buf[0]=0x88; // fin=1; opcode=8
 	buf[1]=0;
 	return (*send)(buf, 2);
