@@ -954,7 +954,7 @@ void Client::sendDelFile(void* a){
 	Network::toBytes(info->fileid, outBuffer + 14);
 	Network::toBytes(info->name, outBuffer + 22);
 
-	SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 23+strlen(info->name)));
+	WebSocket::sendMsg(outBuffer, 23+strlen(info->name));
 	MemManager::free(info->name);
 
 	for(i=0;info->list[i].cdid;i++){
