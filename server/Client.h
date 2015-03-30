@@ -174,7 +174,6 @@ class Client{
 		unsigned char maskKey[4];
 		unsigned char* inBuffer;
 		unsigned char* outBuffer;
-		long long recvLen; // receive length == A WebSocket packet payload length
 		int readLen; // read length == how many bytes of the WebSocket packet read into buffer
 
 // reponse thread

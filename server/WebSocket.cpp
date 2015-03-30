@@ -1,14 +1,33 @@
 void WebSocket::init(){
 	MAX_PACKAGE_SIZE = json_object_get_int(Config::get("socket.maxPackageSize"));
-	if(MAX_PACKAGE_SIZE >= 1024){ // no less than 1KB
-		MAX_BUFFER_SIZE = MAX_PACKAGE_SIZE + 8;
-	}else{
+	if(MAX_PACKAGE_SIZE < 1024){ // no less than 1KB
 		MAX_PACKAGE_SIZE = 1024;
-		MAX_BUFFER_SIZE = 1032;
 	}
+	isFin = false;
+	payloadLen = 0;
 }
 
-int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err){
+unsigned int WebSocket::getPackageSize(){
+	return MAX_PACKAGE_SIZE;
+}
+unsigned int WebSocket::getBufferSize(){
+	return MAX_PACKAGE_SIZE + 10; // send header (10 bytes) > recv decode (8 bytes)
+}
+
+void WebSocket::setRecvHandle(int (* fun)(void *, int )){
+	recv = fun;
+}
+void WebSocket::setSendHandle(int (* fun)(const void *, int )){
+	send = fun;
+}
+bool WebSocket::accept(unsigned char* inBuffer, unsigned char* outBuffer, int *err){
+	if((*recv)(inBuffer, WebSocket::MAX_PACKAGE_SIZE) == 1){
+		(*recv)(inBuffer+1, WebSocket::MAX_PACKAGE_SIZE)
+	}
+	(*send)(outBuffer, WebSocket::getHandShakeResponse(inBuffer, outBuffer, err));
+	return *err;
+};
+unsigned int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err){
 	int len = strlen((char*)request);
 	char* buf_1 = new char[28];
 	char* buf_2 = new char[512];
@@ -55,106 +74,96 @@ int WebSocket::getHandShakeResponse(unsigned char* request, unsigned char* buf, 
 
 	return 160;
 }
-int WebSocket::parseMsg(unsigned char* buf, int readLen, bool isContinue,  long long* payloadLen, unsigned char* maskKey, int* err){
-	// isContinue ? MSG_DONTWAIT : 0
-	// it should be wait for slow network
+bool WebSocket::hasNext(){
+	return payloadLen || !isFin;
+}
+unsigned int WebSocket::recvMsg(unsigned char* buf, int* err){
+	readLen = (*recv)(buf, !payloadLen || MAX_PACKAGE_SIZE <= payloadLen? MAX_PACKAGE_SIZE : payloadLen); // can be upgrade for efficiency // just error handling // use of isNewMsg
 	*err = ERR_NO_ERR;
-	if(readLen && isContinue){
+	if(readLen && payloadLen){
 		// continue read
 		// nothing done
-		// bye
+		// bye.
 		decode((unsigned long long*) (buf), (unsigned long long*) (buf), maskKey, readLen);
-		*payloadLen -= readLen;
+		payloadLen -= readLen;
 	}else if(!readLen || buf[0] & 0x08){
 		// close connection opcode
 		buf[0] = 0x88;
 		buf[1] = 0;
-		readLen=1;
-		*payloadLen=0;
-//	}else if( ! (buf[1] & 0x80) ){
-//		// close connection with error
-//		// mask is not 1
-//		buf[0] = 0x88;
-//		buf[1] = 0;
-//		readLen = 1;
-//		*payloadLen = 1;
-//		err && (*err |= ERR_WRONG_WS_PROTOCOL);
+		readLen = 1;
+		payloadLen = 0;
+	}else if( ! (buf[1] & 0x80) ){
+		// close connection with error
+		// mask is not 1
+		buf[0] = 0x88;
+		buf[1] = 0;
+		readLen = 1;
+		*payloadLen = 1;
+		err && (*err |= ERR_WRONG_WS_PROTOCOL);
 	}else{
-		*payloadLen = (long long) (buf[1] & 0x7F);
-		if(*payloadLen < 126){
-			maskKey[0] = buf[2];
-			maskKey[1] = buf[3];
-			maskKey[2] = buf[4];
-			maskKey[3] = buf[5];
+		isFin = !!(*buf & 0x80);
+		payloadLen = (unsigned long long) (buf[1] & 0x7F);
+		if(payloadLen < 126){
+			memcpy(                   &maskKey     , buf+2, 4);
+			memcpy( ((unsigned char*) &maskKey) + 4, buf+2, 4);
 			decode((unsigned long long*) (buf+6), (unsigned long long*) (buf), maskKey, readLen-=6);
-		}else if(*payloadLen == 126){
-			*payloadLen=Network::toShort(buf+2);
-			maskKey[0] = buf[4];
-			maskKey[1] = buf[5];
-			maskKey[2] = buf[6];
-			maskKey[3] = buf[7];
+		}else if(payloadLen == 126){
+			payloadLen = Network::toShort(buf+2);
+			memcpy(                   &maskKey     , buf+4, 4);
+			memcpy( ((unsigned char*) &maskKey) + 4, buf+4, 4);
 			decode((unsigned long long*) (buf+8), (unsigned long long*) (buf), maskKey, readLen-=8);
 		}else{
-			*payloadLen=Network::toLongLong(buf+2);
-			maskKey[0] = buf[10];
-			maskKey[1] = buf[11];
-			maskKey[2] = buf[12];
-			maskKey[3] = buf[13];
+			buf[2] &= 0x7F;
+			payloadLen=Network::toLongLong(buf+2);
+			memcpy(                   &maskKey     , buf+10, 4);
+			memcpy( ((unsigned char*) &maskKey) + 4, buf+10, 4);
 			decode((unsigned long long*) (buf+14), (unsigned long long*) (buf), maskKey, readLen-=14);
 		}
-		*payloadLen -= readLen;
+		payloadLen -= readLen;
 	}
 	return readLen;
 }
-int WebSocket::sendMsg(unsigned char* buf, unsigned char* msg, long long len){
+int WebSocket::sendMsg(unsigned char* buf, unsigned long long len){
 	int insertLen;
 
 	if(len<126){
-		memmove(buf+(insertLen=2), msg, len); // 1 byte fin+opcode && 1 byte payload
+		memmove(buf+(insertLen=2), buf, len); // 1 byte fin+opcode && 1 byte payload
 		buf[1]=(unsigned char) len;
 	}else if(len<65536){
-		memmove(buf+(insertLen=4), msg, len); // 1 byte fin+opcode && 1+2 bytes payload
+		memmove(buf+(insertLen=4), buf, len); // 1 byte fin+opcode && 1+2 bytes payload
 		buf[1]=(unsigned char) 0x7E;
 		Network::toBytes((short) len, buf+2);
 	}else{
-		memmove(buf+(insertLen=10), msg, len); // 1 byte fin+opcode && 1+8 bytes payload
+		memmove(buf+(insertLen=10), buf, len); // 1 byte fin+opcode && 1+8 bytes payload
 		buf[1]=(unsigned char) 0x7F;
 		Network::toBytes(len, buf+2);
 	}
 	buf[0]=0x82;
-	return len+insertLen;
+	return (*send)(buf, len+insertLen);
 }
 int WebSocket::close(unsigned char* buf){
 	buf[0]=0x88; // fin=1; opcode=8
 	buf[1]=0;
-	return 2;
+	return (*send)(buf, 2);
 }
 
-void WebSocket::decode(unsigned long long* in, unsigned long long* out, unsigned char* maskKey, int len){
-	unsigned long long maskKeyLL;
-	memcpy(                   &maskKeyLL     , maskKey, 4);
-	memcpy( ((unsigned char*) &maskKeyLL) + 4, maskKey, 4);
+void WebSocket::decode(unsigned long long* in, unsigned long long* out, unsigned long long maskKey, int len){
+	unsigned long long tmp = maskKey;
 	int i=0, j=(len+7)/8;
 	for(;i<j;i++,in++,out++){
-		*out = *in ^ maskKeyLL;
+		*out = *in ^ maskKey;
 	}
 
-	if(j=len%4){
-		memcpy( maskKey    , ((unsigned char*)&maskKeyLL)+j, 4-j);
-		memcpy( maskKey+4-j,                  &maskKeyLL   , j  );
+	if(j=len%8){
+		memcpy(                   maskKey    , ((unsigned char*)&tmp)+j, 8-j);
+		memcpy( ((unsigned char*) maskKey+8-j,                  &tmp   , j  );
 	}
 }
 
 bool WebSocket::willExceed(unsigned long long curLen, unsigned long long addLen){
 	curLen += addLen;
-	if(curLen < 126) curLen += 2;
-	else if(curLen < 65536) curLen += 4;
-	else curLen += 10;
-	return WebSocket::MAX_PACKAGE_SIZE < curLen;
+	return WebSocket::MAX_PACKAGE_SIZE < curLen + addLen;
 }
 unsigned long long WebSocket::getRemainBufferSize(unsigned long long curLen){
-	if(curLen < 126) curLen += 2;
-	else if(curLen < 65536) curLen += 4;
-	else curLen += 10;
 	return WebSocket::MAX_PACKAGE_SIZE - curLen;
 }

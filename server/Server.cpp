@@ -44,6 +44,10 @@ Server::Server(){
 
 						SecureSocket::startConn(client_conf->connfd);
 
+						// bind recv and send function
+						WebSocket::setRecvHandle(&SecureSocket::recv);
+						WebSocket::setSendHandle(&SecureSocket::send);
+
 						// connect to DB
 						MySQL::init();
 
@@ -53,7 +57,7 @@ Server::Server(){
 						// create tmpfile pool
 						FileManager::newProcess();
 						new Client();
-//						FileManager::endProcess();
+						// FileManager::endProcess();
 						SecureSocket::close();
 						exit(0);
 					default:

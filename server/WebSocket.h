@@ -13,24 +13,37 @@
 
 class WebSocket{
 	private:
+		static unsigned int MAX_PACKAGE_SIZE;
+
 		WebSocket();
 		static const char * const WS_GUID;
+		static int (* recv)(void *, int);
+		static int (* send)(const void *, int);
+
+		static bool isFin;
+		static unsigned int readLen;
+		static unsigned long long maskKey;
+		static unsigned long long payloadLen;
 
 		static void decode(unsigned long long* in, unsigned long long* out, unsigned char* maskKey, int len);
+		static unsigned int  getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err);	// return buffer size, err return error code, request == buf is safe
+
 	public:
 		static const int ERR_NO_ERR;
 		static const int ERR_VER_MISMATCH;
 		static const int ERR_NOT_WEBSOCKET;
 		static const int ERR_WRONG_WS_PROTOCOL;
 
-		static int MAX_PACKAGE_SIZE;
-		static int MAX_BUFFER_SIZE;
 
 		static void init();
-		static int  getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err);						// return buffer size, err return error code, request == buf is safe
-		static int  parseMsg(unsigned char* buf, int readLen, bool isContinue, long long* payloadLen, unsigned char* maskKey, int* err);	// return buffer size, err return error code
-		static int  sendMsg(unsigned char* buf, unsigned char* msg, long long len);									// return buffer size
-		static int  close(unsigned char* buf);																		// return buffer size
+		static unsigned int getPackageSize();
+		static unsigned int getBufferSize();
+		static void setRecvHandle(int (* fun)(void *, int));
+		static void setSendHandle(int (* fun)(const void *, int));
+		static bool hasNext();																	// return has next package
+		static int  recvMsg(unsigned char* buf, int* err);										// return buffer size, err return error code
+		static int  sendMsg(unsigned char* buf, unsigned char* msg, unsigned long long len);	// return buffer size
+		static int  close(unsigned char* buf);													// return buffer size
 		static bool willExceed(unsigned long long curLen, unsigned long long addLen);
 		static unsigned long long getRemainBufferSize(unsigned long long curLen);
 };
@@ -42,8 +55,7 @@ const int WebSocket::ERR_VER_MISMATCH=1;
 const int WebSocket::ERR_NOT_WEBSOCKET=2;
 const int WebSocket::ERR_WRONG_WS_PROTOCOL=4;
 int WebSocket::MAX_PACKAGE_SIZE = 0;
-int WebSocket::MAX_BUFFER_SIZE = 0;
-//static const int WebSocket::ERR_?=4; //next error code 2^n
+//static const int WebSocket::ERR_?=8; //next error code 2^n
 
 #include "WebSocket.cpp"
 
