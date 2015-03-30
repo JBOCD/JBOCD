@@ -53,7 +53,7 @@ Server::Server(){
 						// create tmpfile pool
 						FileManager::newProcess();
 						new Client();
-						FileManager::endProcess();
+//						FileManager::endProcess();
 						SecureSocket::close();
 						exit(0);
 					default:

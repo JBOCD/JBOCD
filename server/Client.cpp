@@ -444,7 +444,6 @@ void Client::readSaveFile(){
 	unsigned long long maxSaveSize;
 	int fd;
 	unsigned long long diff;
-
 	info->object = this;
 	info->fptr = &Client::processSaveFile;
 
@@ -898,7 +897,7 @@ void Client::sendCreateFile(void* a){
 	*(outBuffer+1) = info->operationID;
 	Network::toBytes(info->fileid, outBuffer+2);
 	SecureSocket::send(outBuffer, WebSocket::sendMsg(outBuffer, outBuffer, 10));
-	
+
 	MemManager::free(info->name);
 	MemManager::free(info);
 }
