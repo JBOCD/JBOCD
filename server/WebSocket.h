@@ -54,8 +54,16 @@ const int WebSocket::ERR_NO_ERR=0;
 const int WebSocket::ERR_VER_MISMATCH=1;
 const int WebSocket::ERR_NOT_WEBSOCKET=2;
 const int WebSocket::ERR_WRONG_WS_PROTOCOL=4;
+//const int WebSocket::ERR_?=8; //next error code 2^n
+
 unsigned int WebSocket::MAX_PACKAGE_SIZE = 0;
-//static const int WebSocket::ERR_?=8; //next error code 2^n
+
+bool WebSocket::isFin = false;
+unsigned int WebSocket::readLen = 0;
+unsigned long long WebSocket::maskKey = 0;
+unsigned long long WebSocket::payloadLen = 0;
+int (* WebSocket::recv)(void *, int) = NULL;
+int (* WebSocket::send)(void *, int) = NULL;
 
 #include "WebSocket.cpp"
 
