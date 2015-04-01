@@ -678,6 +678,8 @@ void Client::processSaveFile(void *arg){
 	char* remotePath = (char*) MemManager::allocate(512);
 	char* localPath  = (char*) MemManager::allocate(512);
 
+	int counter;
+
 	// get remote store directory
 	for(struct client_logical_drive* ld = ld_root->root; ld; ld = ld->next){
 		if(ld->ldid == info->ldid){
