@@ -439,7 +439,7 @@ void Client::readSaveFile(){
 	info->object = this;
 	info->fptr = &Client::processSaveFile;
 
-	info->isInsertOK = 0;
+	info->status = 0;
 	info->operationID = *(inBuffer +1);
 	info->ldid = Network::toInt(inBuffer + 2);
 	info->cdid = Network::toInt(inBuffer + 6);
@@ -486,7 +486,7 @@ void Client::readSaveFile(){
 
 			(res = check_chunk_size->executeQuery())->next();
 			if(diff = res->getUInt64(1) - info->chunkSize){ // chunk size no update != file name no update
-				info->isInsertOK = Client::NO_CHANGE;
+				info->status = Client::NO_CHANGE;
 			}else{
 				check_clouddrive_size->setUInt64(1,diff);
 				check_logicaldrive_size->setUInt64(1,diff);
@@ -494,36 +494,36 @@ void Client::readSaveFile(){
 				delete res;
 				(res = check_clouddrive_size->executeQuery())->next();
 				if(res->getUInt(1)){
-					info->isInsertOK = Client::CHUNK_SIZE_EXCEED_CD_LIMIT;
+					info->status = Client::CHUNK_SIZE_EXCEED_CD_LIMIT;
 				}else{
 					delete res;
 					(res = check_logicaldrive_size->executeQuery())->next();
 					if(res->getUInt(1)){
-						info->isInsertOK = Client::CHUNK_SIZE_EXCEED_LD_LIMIT;
+						info->status = Client::CHUNK_SIZE_EXCEED_LD_LIMIT;
 					}
 					if(update_clouddrive_alloc_size->executeUpdate()){
-						info->isInsertOK = Client::INSERT;
+						info->status = Client::INSERT;
 					}else{
-						info->isInsertOK = Client::CD_NOT_IN_LD;
+						info->status = Client::CD_NOT_IN_LD;
 					}
 				}
 			}
 			// executeUpdate return { 1 == Insert / No Change, 2 == update}
-			if(info->isInsertOK >= Client::NO_CHANGE){
-				info->isInsertOK = update_chunk_info->executeUpdate() - info->isInsertOK;
+			if(info->status >= Client::NO_CHANGE){
+				info->status = update_chunk_info->executeUpdate() - info->status;
 			}
 			delete res;
-			if(info->isInsertOK >= Client::NO_CHANGE){
+			if(info->status >= Client::NO_CHANGE){
 				Thread::create(&Client::_thread_redirector, (void*) info);
 			}else{
 				Client::addResponseQueue(0x21, info);
 			}
 		}else{
-			info->isInsertOK = Client::CHUNK_SIZE_ZERO_EXCEPTION;
+			info->status = Client::CHUNK_SIZE_ZERO_EXCEPTION;
 			Client::addResponseQueue(0x21, info);
 		}
 	}else{
-		info->isInsertOK = Client::PERMISSION_DENY;
+		info->status = Client::PERMISSION_DENY;
 		Client::addResponseQueue(0x21, info);
 	}
 }
@@ -901,7 +901,7 @@ void Client::sendSaveFile(void* a){
 	*outBuffer = 0x21;
 	*(outBuffer+1) = info->operationID;
 	Network::toBytes(info->seqnum, outBuffer + 2);
-	*(outBuffer+6) = info->isInsertOK;
+	*(outBuffer+6) = info->status;
 	Network::toBytes(info->chunkSize, outBuffer + 7);
 
 	WebSocket::sendMsg(outBuffer, 11);

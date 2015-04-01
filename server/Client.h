@@ -110,7 +110,7 @@ class Client{
 			char* remoteName;
 			unsigned int* tmpFile;
 			unsigned int chunkSize;
-			unsigned char isInsertOK;
+			unsigned char status;
 		};
 
 		// 0x22
