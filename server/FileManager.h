@@ -6,14 +6,14 @@
 #ifndef FILE_MANAGEMER_H
 #define FILE_MANAGEMER_H
 
-// #pragma pack(1)
+#pragma pack(1)
 struct file_store{
 	struct file_store* next;
 	int fileSize;
 	int fd;
 	unsigned int filename;
 };
-// #pragma pop()
+#pragma pop()
 
 class FileManager{
 
