@@ -772,7 +772,6 @@ void Client::processDelChunk(void *arg){
 			}
 		}
 		sprintf(remotePath, "%s%s", dir, info->list[i].chunkName);
-		MemManager::free(info->list[i].chunkName);
 		if(cdDriver->del(remotePath)){
 			// not zero mean fail
 		}
