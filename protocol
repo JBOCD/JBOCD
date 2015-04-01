@@ -111,6 +111,7 @@ case 0x22 00100010: server get (info)
 case 0x23 00100011: server get (chunk)
 	1 byte int: Operation ID
 	4 byte int: File chunk sequence number
+	1 byte int: status
 	4 byte int: send chunk length (first chunk) / send chunk start byte position (continuous chunk)
 	4 byte int: send current packet payload len "n" (Range: 0 - payload len)
 	n byte: part of chunk payload

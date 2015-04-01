@@ -132,6 +132,7 @@ class Client{
 			unsigned int seqnum;
 			char* chunkName;
 			unsigned int* tmpFile;
+			unsigned int status;
 			unsigned int chunkSize;
 		};
 
@@ -139,6 +140,7 @@ class Client{
 		struct client_del_chunk_array{
 			unsigned int cdid;
 			char* chunkName;
+//			unsigned char status;
 		};
 		// 0x28, 0x29
 		struct client_del_file{
@@ -204,14 +206,21 @@ class Client{
 
 // const
 		// file chunk upload / update
-		static const unsigned char UPDATE;
-		static const unsigned char INSERT;
-		static const unsigned char NO_CHANGE;
-		static const unsigned char CHUNK_SIZE_EXCEED_CD_LIMIT;
-		static const unsigned char CHUNK_SIZE_EXCEED_LD_LIMIT;
-		static const unsigned char CHUNK_SIZE_ZERO_EXCEPTION;
-		static const unsigned char CD_NOT_IN_LD;
-		static const unsigned char PERMISSION_DENY;
+		static const char DELETE;
+		static const char UPDATE;
+		static const char INSERT;
+		static const char NO_CHANGE;
+		static const char CHUNK_SIZE_EXCEED_CD_LIMIT;
+		static const char CHUNK_SIZE_EXCEED_LD_LIMIT;
+		static const char CHUNK_SIZE_ZERO_EXCEPTION;
+		static const char CD_NOT_IN_LD;
+		static const char RETRY_LIMIT_EXCEED;
+		static const char PERMISSION_DENY;
+
+// config
+		unsigned char maxPutTry;
+		unsigned char maxGetTry;
+		unsigned char maxDelTry;
 
 // function
 		void loadCloudDrive();
@@ -257,14 +266,16 @@ class Client{
 		static void* _thread_redirector(void* arg);
 };
 
-const unsigned char Client::UPDATE = 2;
-const unsigned char Client::INSERT = 1;
-const unsigned char Client::NO_CHANGE = 0;
-const unsigned char Client::CHUNK_SIZE_EXCEED_CD_LIMIT = -1;
-const unsigned char Client::CHUNK_SIZE_EXCEED_LD_LIMIT = -2;
-const unsigned char Client::CHUNK_SIZE_ZERO_EXCEPTION = -3;
-const unsigned char Client::CD_NOT_IN_LD = -4;
-const unsigned char Client::PERMISSION_DENY = -5;
+const char Client::DELETE = 3;
+const char Client::UPDATE = 2;
+const char Client::INSERT = 1;
+const char Client::NO_CHANGE = 0;
+const char Client::CHUNK_SIZE_EXCEED_CD_LIMIT = -1;
+const char Client::CHUNK_SIZE_EXCEED_LD_LIMIT = -2;
+const char Client::CHUNK_SIZE_ZERO_EXCEPTION = -3;
+const char Client::CD_NOT_IN_LD = -4;
+const char Client::RETRY_LIMIT_EXCEED = -5;
+const char Client::PERMISSION_DENY = 0x80; // MIN value
 
 #include "Client.cpp"
 

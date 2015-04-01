@@ -50,7 +50,10 @@
 			// if this path have not '/', it will become tmp folder prefix
 			"dirpath" : "/var/JBOCD/tmp/",
 			"maxAllocate" : 1073741824 // 1 GB per connection
-		}
+		},
+		"maxUploadRetry"   : 3,
+		"maxDownloadRetry" : 3,
+		"maxDeleteRetry"   : 3
 	},
 	"memory":{
 		// 50MB for each client

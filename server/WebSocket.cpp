@@ -75,7 +75,7 @@ unsigned int WebSocket::getHandShakeResponse(unsigned char* request, unsigned ch
 	return 160;
 }
 bool WebSocket::hasNext(){
-	return payloadLen || !isFin;
+	return readLen && (payloadLen || !isFin);
 }
 unsigned int WebSocket::recvMsg(unsigned char* buf, int* err){
 	readLen = (*recv)(buf, !payloadLen || MAX_PACKAGE_SIZE <= payloadLen? MAX_PACKAGE_SIZE : payloadLen); // can be upgrade for efficiency // just error handling // use of isNewMsg

@@ -1,6 +1,10 @@
 Client::Client(){
 	struct client_thread_director* info = (struct client_thread_director*) MemManager::allocate(sizeof(struct client_thread_director));
-	
+	int i;
+	maxPutTry = (i=json_object_get_int(Config::get("file.maxUploadRetry"  ))) > 255 ? 255 : i;
+	maxGetTry = (i=json_object_get_int(Config::get("file.maxDownloadRetry"))) > 255 ? 255 : i;
+	maxDelTry = (i=json_object_get_int(Config::get("file.maxDeleteRetry"  ))) > 255 ? 255 : i;
+
 	setbuf(stdout, NULL);// debug use
 	
 	info->object = this;
@@ -249,7 +253,7 @@ void Client::commandInterpreter(){
 
 	}while(!isEnd);
 	pthread_mutex_lock(&client_end_mutex);
-	pthread_mutex_lock(&client_end_mutex); // waiting responseThread end
+	pthread_mutex_lock(&client_end_mutex); // waiting response Thread end
 }
 
 /* resposne function */
@@ -696,9 +700,10 @@ void Client::processSaveFile(void *arg){
 	}
 	sprintf(remotePath, "%s%s", dir, info->remoteName);
 	FileManager::getTempPath(info->tmpFile, localPath);
-	if(cdDriver->put(remotePath, localPath)){
-		// not zero mean fail
-	}
+
+	for(counter = 0; counter < maxGetTry && cdDriver->put(remotePath, localPath); counter++);
+	if(counter >= maxGetTry) info->status = RETRY_LIMIT_EXCEED;
+
 	MemManager::free(remotePath);
 	MemManager::free(localPath);
 	Client::addResponseQueue(0x21, info);
@@ -711,6 +716,8 @@ void Client::processGetFileChunk(void *arg){
 	CDDriver* cdDriver;
 	char* remotePath = (char*) MemManager::allocate(512);
 	char* localPath  = (char*) MemManager::allocate(512);
+	int counter;
+
 	// get remote store directory
 	for(struct client_logical_drive* ld = ld_root->root; ld; ld = ld->next){
 		if(ld->ldid == info->ldid){
@@ -734,9 +741,9 @@ void Client::processGetFileChunk(void *arg){
 	info->tmpFile = FileManager::newTemp(info->chunkSize);
 	sprintf(remotePath, "%s%s", dir, info->chunkName);
 	FileManager::getTempPath(info->tmpFile, localPath);
-	if(cdDriver->get(remotePath, localPath)){
-		// not zero mean fail
-	}
+
+	for(counter = 0; counter < maxGetTry && cdDriver->get(remotePath, localPath); counter++);
+	if(counter >= maxGetTry) info->status = RETRY_LIMIT_EXCEED;
 
 	MemManager::free(remotePath);
 	MemManager::free(localPath);
@@ -750,6 +757,7 @@ void Client::processDelChunk(void *arg){
 	char* dir;
 	CDDriver* cdDriver;
 	char* remotePath = (char*) MemManager::allocate(512);
+	int counter;
 
 	// get logical drive info
 	for(ld = ld_root->root; ld && ld->ldid != info->ldid; ld = ld->next);
@@ -772,9 +780,8 @@ void Client::processDelChunk(void *arg){
 			}
 		}
 		sprintf(remotePath, "%s%s", dir, info->list[i].chunkName);
-		if(cdDriver->del(remotePath)){
-			// not zero mean fail
-		}
+		for(counter = 0; counter < maxDelTry && cdDriver->del(remotePath); counter++);
+//		info->list[i].status = counter < maxDelTry ? DELETE : RETRY_LIMIT_EXCEED;
 	}
 	MemManager::free(remotePath);
 
@@ -922,21 +929,23 @@ void Client::sendGetFileChunk(void* a){
 	*outBuffer = 0x23;
 	*(outBuffer+1) = info->operationID;
 	Network::toBytes(info->seqnum, outBuffer + 2);
-	Network::toBytes(info->chunkSize, outBuffer + 6);
+	Network::toBytes(info->status, outBuffer + 6);
+	Network::toBytes(info->chunkSize, outBuffer + 7);
 	if(fd > 0 && maxRead > 0){
-		while(readBytes = read(fd, outBuffer+14, maxRead)){
+		while(readBytes = read(fd, outBuffer+15, maxRead)){
 			if(readBytes > 0){
 				totalReadBytes += readBytes;
-				Network::toBytes(readBytes, outBuffer + 10);
-				WebSocket::sendMsg(outBuffer, readBytes+14);
+				Network::toBytes(readBytes, outBuffer + 11);
+				WebSocket::sendMsg(outBuffer, readBytes+15);
 			}
-			Network::toBytes(totalReadBytes, outBuffer + 6);
+			Network::toBytes(totalReadBytes, outBuffer + 7);
 		}
-		Network::toBytes(readBytes, outBuffer + 10);
-		WebSocket::sendMsg(outBuffer, 14);
+		Network::toBytes(readBytes, outBuffer + 11);
+		WebSocket::sendMsg(outBuffer, 15);
 		close(fd);
 	}else{
-		WebSocket::sendMsg(outBuffer, 14);
+		Network::toBytes((unsigned int) 0, outBuffer + 11);
+		WebSocket::sendMsg(outBuffer, 15);
 	}
 	FileManager::deleteTemp(info->tmpFile);
 	MemManager::free(info->chunkName);
