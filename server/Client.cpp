@@ -586,10 +586,11 @@ void Client::readDelFile(){
 		get_file->setUInt64( 2, fileid );
 		res = get_file->executeQuery();
 		if(res->next()){
+			unsigned int cdid;
+			struct client_del_chunk* chunk_info;
+			struct client_logical_drive* ld;
+
 			info = (struct client_del_file*) MemManager::allocate(sizeof(struct client_del_file));
-			info->command = 0x28;
-			info->object = this;
-			info->fptr = &Client::processDelChunk;
 			info->operationID = *(inBuffer+1);
 			info->ldid = ldid;
 			info->parentid = res->getUInt("parentid");
@@ -605,17 +606,36 @@ void Client::readDelFile(){
 			get_all_chunk->setUInt(1, info->ldid);
 			get_all_chunk->setUInt64(2, info->fileid);
 			res = get_all_chunk->executeQuery();
-			info->list = (struct client_del_chunk_array*)MemManager::allocate(sizeof(struct client_del_chunk_array) * (res->rowsCount() + 1) );
+
+			// get logical drive info
+			for(ld = ld_root->root; ld && ld->ldid != info->ldid; ld = ld->next);
+
 			for(i=0;res->next();i++){
-				info->list[i].cdid = res->getUInt("cdid");
-				info->list[i].chunkName = (char*) MemManager::allocate( strlen( res->getString("chunk_name").c_str() ) + 1 );
-				strcpy(info->list[i].chunkName, res->getString("chunk_name")->c_str());
+				cdid = res->getUInt("cdid");
+				chunk_info = MemManager::allocate(sizeof(struct client_del_chunk));
+
+				chunk_info->object = this;
+				chunk_info->fptr = &Client::processDelChunk;
+				chunk_info->chunkName = (char*) MemManager::allocate( strlen( res->getString("chunk_name").c_str() ) + 1 );
+				strcpy(chunk_info->chunkName, res->getString("chunk_name")->c_str());
+
+				for(struct client_clouddrive* cd = ld->root; cd; cd = cd->next){
+					if(cd->cdid == cdid){
+						chunk_info->dir = cd->dir;
+						break;
+					}
+				}
+
+				// get handle Cloud Drive driver
+				for(chunk_info->cd = cd_root->root; *chunk_info->cd && chunk_info->cd->isID(cdid); chunk_info->cd++);
+				if(*chunk_info->cd){
+					Thread::create(&Client::_thread_redirector, (void*) chunk_info);
+				}
 			}
-			memset(info->list + i, 0, sizeof(struct client_del_chunk_array));
 			remove_chunk->setUInt(1, info->ldid);
 			remove_chunk->setUInt64(2, info->fileid);
 			remove_chunk->executeUpdate();
-			Thread::create(&Client::_thread_redirector, (void*) info);
+			Client::addResponseQueue(0x28, info);
 		}
 		delete res;
 
@@ -639,29 +659,50 @@ void Client::readDelChunk(){
 	struct client_del_file* info = (struct client_del_file*) MemManager::allocate(sizeof(struct client_del_file));
 	int i;
 
-	info->command = 0x29;
 	info->operationID = *(inBuffer+1);
-	info->object = this;
-	info->fptr = &Client::processDelChunk;
 	info->ldid = Network::toInt(inBuffer + 2);
 	info->fileid = Network::toLongLong(inBuffer + 6) ;
 
 	if(checkLogicalDrive(info->ldid)){
+		unsigned int cdid;
+		struct client_del_chunk* chunk_info;
+		struct client_logical_drive* ld;
+
 		get_all_chunk->setUInt(1, info->ldid);
 		get_all_chunk->setUInt64(2, info->fileid);
 		res = get_all_chunk->executeQuery();
-		info->list = (struct client_del_chunk_array*)MemManager::allocate(sizeof(struct client_del_chunk_array) * (res->rowsCount() + 1) );
+
+		// get logical drive info
+		for(ld = ld_root->root; ld && ld->ldid != info->ldid; ld = ld->next);
+
 		for(i=0;res->next();i++){
-			info->list[i].cdid = res->getUInt("cdid");
-			info->list[i].chunkName = (char*) MemManager::allocate( strlen( res->getString("chunk_name").c_str() ) + 1 );
-			strcpy(info->list[i].chunkName, res->getString("chunk_name")->c_str());
+			cdid = res->getUInt("cdid");
+			chunk_info = MemManager::allocate(sizeof(struct client_del_chunk));
+
+			chunk_info->object = this;
+			chunk_info->fptr = &Client::processDelChunk;
+			chunk_info->chunkName = (char*) MemManager::allocate( strlen( res->getString("chunk_name").c_str() ) + 1 );
+			strcpy(chunk_info->chunkName, res->getString("chunk_name")->c_str());
+
+			for(struct client_clouddrive* cd = ld->root; cd; cd = cd->next){
+				if(cd->cdid == cdid){
+					chunk_info->dir = cd->dir;
+					break;
+				}
+			}
+
+			// get handle Cloud Drive driver
+			for(chunk_info->cd = cd_root->root; *chunk_info->cd && chunk_info->cd->isID(cdid); chunk_info->cd++);
+			if(*chunk_info->cd){
+				Thread::create(&Client::_thread_redirector, (void*) chunk_info);
+			}
+
 		}
-		memset(info->list + i, 0, sizeof(struct client_del_chunk_array));
 		delete res;
 		remove_chunk->setUInt(1, info->ldid);
 		remove_chunk->setUInt64(2, info->fileid);
 		remove_chunk->executeUpdate();
-		Thread::create(&Client::_thread_redirector, (void*) info);
+		Client::addResponseQueue(0x28, info);
 	}else{
 		MemManager::free(info);
 	}
@@ -753,41 +794,21 @@ void Client::processGetFileChunk(void *arg){
 }
 // 0x28
 void Client::processDelChunk(void *arg){
-	struct client_del_file* info = (struct client_del_file*) arg;
-	struct client_logical_drive* ld;
+	struct client_del_chunk* info = (struct client_del_file*) arg;
 
-	char* dir;
-	CDDriver* cdDriver;
 	char* remotePath = (char*) MemManager::allocate(512);
 	int counter;
 
-	// get logical drive info
-	for(ld = ld_root->root; ld && ld->ldid != info->ldid; ld = ld->next);
-
-	// select all file id chunk
-	for(int i=0; info->list[i].cdid; i++){
-
-		for(struct client_clouddrive* cd = ld->root; cd; cd = cd->next){
-			if(cd->cdid == info->list[i].cdid){
-				dir = cd->dir;
-				break;
-			}
-		}
-
-		// get handle Cloud Drive driver
-		for(CDDriver** cd = cd_root->root; *cd; cd++){
-			if((*cd)->isID(info->list[i].cdid)){
-				cdDriver = *cd;
-				break;
-			}
-		}
-		sprintf(remotePath, "%s%s", dir, info->list[i].chunkName);
-		for(counter = 0; counter < maxDelTry && cdDriver->del(remotePath); counter++);
-//		info->list[i].status = counter < maxDelTry ? DELETE : RETRY_LIMIT_EXCEED;
-	}
+	sprintf(remotePath, "%s%s", dir, info->chunkName);
+	for(counter = 0; counter < maxDelTry && info->cd->del(remotePath); counter++);
+//	info->list[i].status = counter < maxDelTry ? DELETE : RETRY_LIMIT_EXCEED;
 	MemManager::free(remotePath);
 
-	Client::addResponseQueue(info->command, info);
+//	End thread
+//	collect all resourse here
+	MemManager::free(info->chunkName);
+	MemManager::free(info);
+//	Client::addResponseQueue(info->command, info);
 }
 
 /* Send Result */
@@ -965,12 +986,8 @@ void Client::sendDelFile(void* a){
 	Network::toBytes(info->name, outBuffer + 22);
 
 	WebSocket::sendMsg(outBuffer, 23+strlen(info->name));
-	MemManager::free(info->name);
 
-	for(i=0;info->list[i].cdid;i++){
-		MemManager::free(info->list[i].chunkName);
-	}
-	MemManager::free(info->list);
+	MemManager::free(info->name);
 	MemManager::free(info);
 
 }
@@ -978,13 +995,9 @@ void Client::sendDelFile(void* a){
 void Client::sendDelChunk(void* a){
 	struct client_del_file* info = (struct client_del_file*) a;
 	int i;
-	*outBuffer = 0x28;
+	*outBuffer = 0x29;
 	*(outBuffer+1) = info->operationID;
 
-	for(i=0;info->list[i].cdid;i++){
-		MemManager::free(info->list[i].chunkName);
-	}
-	MemManager::free(info->list);
 	MemManager::free(info);
 
 }

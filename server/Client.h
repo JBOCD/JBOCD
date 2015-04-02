@@ -137,22 +137,21 @@ class Client{
 		};
 
 		//0x28
-		struct client_del_chunk_array{
-			unsigned int cdid;
+		struct client_del_chunk{
+			Client* object;
+			void (Client::*fptr)(void*);
+			CDDriver* cd;
+			char*  dir;
 			char* chunkName;
 //			unsigned char status;
 		};
 		// 0x28, 0x29
 		struct client_del_file{
-			Client* object;
-			void (Client::*fptr)(void*);
 			unsigned char operationID;
-			unsigned char command;
 			unsigned int ldid;
 			unsigned long long parentid;
 			unsigned long long fileid;
 			char* name;
-			struct client_del_chunk_array* list;
 		};
 
 		pthread_t responseThread_tid;
