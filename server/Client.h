@@ -140,7 +140,7 @@ class Client{
 		struct client_del_chunk{
 			Client* object;
 			void (Client::*fptr)(void*);
-			CDDriver* cd;
+			CDDriver** cd;
 			char*  dir;
 			char* chunkName;
 //			unsigned char status;

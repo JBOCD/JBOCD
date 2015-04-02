@@ -627,7 +627,7 @@ void Client::readDelFile(){
 				}
 
 				// get handle Cloud Drive driver
-				for(chunk_info->cd = cd_root->root; *chunk_info->cd && chunk_info->cd->isID(cdid); chunk_info->cd++);
+				for(chunk_info->cd = cd_root->root; *chunk_info->cd && (*chunk_info->cd)->isID(cdid); chunk_info->cd++);
 				if(*chunk_info->cd){
 					Thread::create(&Client::_thread_redirector, (void*) chunk_info);
 				}
@@ -692,7 +692,7 @@ void Client::readDelChunk(){
 			}
 
 			// get handle Cloud Drive driver
-			for(chunk_info->cd = cd_root->root; *chunk_info->cd && chunk_info->cd->isID(cdid); chunk_info->cd++);
+			for(chunk_info->cd = cd_root->root; *chunk_info->cd && (*chunk_info->cd)->isID(cdid); chunk_info->cd++);
 			if(*chunk_info->cd){
 				Thread::create(&Client::_thread_redirector, (void*) chunk_info);
 			}
@@ -782,7 +782,7 @@ void Client::processGetFileChunk(void *arg){
 		}
 	}
 	info->tmpFile = FileManager::newTemp(info->chunkSize);
-	sprintf(remotePath, "%s%s", dir, info->chunkName);
+	sprintf(remotePath, "%s%s", info->dir, info->chunkName);
 	FileManager::getTempPath(info->tmpFile, localPath);
 
 	for(counter = 0; counter < maxGetTry && cdDriver->get(remotePath, localPath); counter++);
@@ -799,7 +799,7 @@ void Client::processDelChunk(void *arg){
 	char* remotePath = (char*) MemManager::allocate(512);
 	int counter;
 
-	sprintf(remotePath, "%s%s", dir, info->chunkName);
+	sprintf(remotePath, "%s%s", info->dir, info->chunkName);
 	for(counter = 0; counter < maxDelTry && info->cd->del(remotePath); counter++);
 //	info->list[i].status = counter < maxDelTry ? DELETE : RETRY_LIMIT_EXCEED;
 	MemManager::free(remotePath);
