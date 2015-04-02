@@ -215,7 +215,7 @@ void Client::commandInterpreter(){
 
 		// recv part
 		// should check login then do other step
-		if(account_id > 0 || !*inBuffer){
+		if(account_id > 0 || !*inBuffer || *inBuffer == 0x88){
 			switch(*inBuffer){
 				case 0x00: // ls acc req
 					Client::readLogin();
