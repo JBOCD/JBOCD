@@ -98,7 +98,7 @@ unsigned int WebSocket::recvMsg(unsigned char* buf, int* err){
 		buf[0] = 0x88;
 		buf[1] = 0;
 		readLen = 1;
-		payloadLen = 1;
+		payloadLen = 0;
 		err && (*err |= ERR_WRONG_WS_PROTOCOL);
 	}else{
 		isFin = !!(*buf & 0x80);
