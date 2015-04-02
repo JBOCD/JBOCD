@@ -612,7 +612,7 @@ void Client::readDelFile(){
 
 			for(i=0;res->next();i++){
 				cdid = res->getUInt("cdid");
-				chunk_info = MemManager::allocate(sizeof(struct client_del_chunk));
+				chunk_info = (struct client_del_chunk*) MemManager::allocate(sizeof(struct client_del_chunk));
 
 				chunk_info->object = this;
 				chunk_info->fptr = &Client::processDelChunk;
@@ -677,7 +677,7 @@ void Client::readDelChunk(){
 
 		for(i=0;res->next();i++){
 			cdid = res->getUInt("cdid");
-			chunk_info = MemManager::allocate(sizeof(struct client_del_chunk));
+			chunk_info = (struct client_del_chunk*) MemManager::allocate(sizeof(struct client_del_chunk));
 
 			chunk_info->object = this;
 			chunk_info->fptr = &Client::processDelChunk;
@@ -782,7 +782,7 @@ void Client::processGetFileChunk(void *arg){
 		}
 	}
 	info->tmpFile = FileManager::newTemp(info->chunkSize);
-	sprintf(remotePath, "%s%s", info->dir, info->chunkName);
+	sprintf(remotePath, "%s%s", dir, info->chunkName);
 	FileManager::getTempPath(info->tmpFile, localPath);
 
 	for(counter = 0; counter < maxGetTry && cdDriver->get(remotePath, localPath); counter++);
@@ -794,13 +794,13 @@ void Client::processGetFileChunk(void *arg){
 }
 // 0x28
 void Client::processDelChunk(void *arg){
-	struct client_del_chunk* info = (struct client_del_file*) arg;
+	struct client_del_chunk* info = (struct client_del_chunk*) arg;
 
 	char* remotePath = (char*) MemManager::allocate(512);
 	int counter;
 
 	sprintf(remotePath, "%s%s", info->dir, info->chunkName);
-	for(counter = 0; counter < maxDelTry && info->cd->del(remotePath); counter++);
+	for(counter = 0; counter < maxDelTry && (*(info->cd))->del(remotePath); counter++);
 //	info->list[i].status = counter < maxDelTry ? DELETE : RETRY_LIMIT_EXCEED;
 	MemManager::free(remotePath);
 
