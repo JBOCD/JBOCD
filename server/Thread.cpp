@@ -57,6 +57,7 @@ void Thread::addDelQueue(pthread_t t){
 	val->next = delRoot;
 	delRoot = val;
 	pthread_mutex_unlock(&del_queue_mutex);
+	pthread_mutex_unlock(&new_thread_mutex);
 }
 void Thread::clearThread(){
 	struct thread_queue* tmp;
@@ -64,7 +65,7 @@ void Thread::clearThread(){
 	pthread_mutex_lock(&counter_mutex);
 	while(delRoot){
 		tmp = delRoot;
-		printf("[%05d] Clear Ended thread (%d).\n", (int)getpid(), (int) tmp->t);
+		printf("[%05d] Clear Ended thread (%u).\n", getpid(), (int) tmp->t);
 		pthread_join(tmp->t, NULL);
 		curThread--;
 		delRoot = delRoot->next;

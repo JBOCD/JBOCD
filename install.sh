@@ -124,8 +124,8 @@ if [ "$SET_PROXY" = "y" ]; then
 fi
 
 echo Installing Build Package.
-sudo apt-get upgrade -y
 sudo apt-get update -y
+sudo apt-get upgrade -y
 if [ ! -f ${SAVE_STEP_PATH}/lib-apt-install ]; then
 	# for all
 	sudo apt-get install build-essential git -y
@@ -155,14 +155,15 @@ fi
 echo Downloading JBOCD
 
 #download procedure use file copy now
-#change it 
+#change it
 cd $BASE_PATH
 cp -r server $TEMP/server
 #...
 
 echo Compiling JBOCD
 cd $TEMP/server
-sudo make clean BUILD=$BUILD; sudo make BUILD=$BUILD
+sudo make clean BUILD=$BUILD
+sudo make BUILD=$BUILD
 
 echo Setting up JBOCD
 [ ! -d /etc/JBOCD ] && sudo mkdir /etc/JBOCD

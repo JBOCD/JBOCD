@@ -1,4 +1,10 @@
 #include "Dropbox.h"
+const char* Dropbox::lang   ="python";
+const char* Dropbox::getCMD ="/var/JBOCD/module/dropbox/get.py";
+const char* Dropbox::putCMD ="/var/JBOCD/module/dropbox/put.py";
+const char* Dropbox::listCMD="/var/JBOCD/module/dropbox/list.py";
+const char* Dropbox::delCMD ="/var/JBOCD/module/dropbox/delete.py";
+
 Dropbox::Dropbox(const char* accessToken, unsigned int id){
 	int len = strlen(accessToken);
 	this->accessToken = (char*) malloc(len+1);
@@ -7,39 +13,52 @@ Dropbox::Dropbox(const char* accessToken, unsigned int id){
 	this->id = id;
 }
 int Dropbox::get(char* remotefilePath, char* localfilePath){
-	sprintf(tmpStr, "%s '%s' '%s' '%s'",
-		"python /var/JBOCD/module/dropbox/get.py",
-		accessToken,
-		remotefilePath,
-		localfilePath
-	);
-	return system(tmpStr);
+	pid_t pid;
+	int status;
+	if( (pid = fork()) ){
+		waitpid(pid, &status, 0);
+	}else{
+		execlp(lang, lang, getCMD, accessToken, remotefilePath, localfilePath, NULL);
+		printf("[%u] Fail to open script\n", getpid());
+		exit(1);
+	}
+	return WEXITSTATUS(status);
 }
 int Dropbox::put(char* remotefilePath, char* localfilePath){
-	sprintf(tmpStr, "%s '%s' '%s' '%s'",
-		"python /var/JBOCD/module/dropbox/put.py",
-		accessToken,
-		localfilePath,
-		remotefilePath
-	);
-	return system(tmpStr);
+	pid_t pid;
+	int status;
+	if( (pid = fork()) ){
+		waitpid(pid, &status, 0);
+	}else{
+		execlp(lang, lang, putCMD, accessToken, localfilePath, remotefilePath, NULL);
+		printf("[%u] Fail to open script\n", getpid());
+		exit(1);
+	}
+	return WEXITSTATUS(status);
 }
 int Dropbox::ls(char* remotefilePath, char* localfilePath){
-	sprintf(tmpStr, "%s '%s' '%s' '%s'",
-		"python /var/JBOCD/module/dropbox/list.py",
-		accessToken,
-		localfilePath,
-		remotefilePath
-	);
-	return system(tmpStr);
+	pid_t pid;
+	int status;
+	if( (pid = fork()) ){
+		waitpid(pid, &status, 0);
+	}else{
+		execlp(lang, lang, listCMD, accessToken, localfilePath, remotefilePath, NULL);
+		printf("[%u] Fail to open script\n", getpid());
+		exit(1);
+	}
+	return WEXITSTATUS(status);
 }
 int Dropbox::del(char* remotefilePath){
-	sprintf(tmpStr, "%s '%s' '%s'",
-		"python /var/JBOCD/module/dropbox/delete.py",
-		accessToken,
-		remotefilePath
-	);
-	return system(tmpStr);
+	pid_t pid;
+	int status;
+	if( (pid = fork()) ){
+		waitpid(pid, &status, 0);
+	}else{
+		execlp(lang, lang, delCMD, accessToken, remotefilePath, NULL);
+		printf("[%u] Fail to open script\n", getpid());
+		exit(1);
+	}
+	return WEXITSTATUS(status);
 }
 bool Dropbox::isID(unsigned int id){
 	return this->id == id;

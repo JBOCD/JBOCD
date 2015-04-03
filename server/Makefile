@@ -15,9 +15,8 @@ all:
 	g++ -std=c++0x -pthread -o ${BUILD}/server main.cpp $(CFLAGS) $(LDFLAGS)
 
 clean:
-	[ -f ${BUILD}/* ] && rm -r ${BUILD}/*
-	[ -f /usr/local/lib/libdropbox.so ] && sudo rm /usr/local/lib/libdropbox.so
-	[ -f /usr/local/lib/libgoogledrive.so ] && sudo rm /usr/local/lib/libgoogledrive.so
+	[ -f /usr/local/lib/libdropbox.so ] && rm /usr/local/lib/libdropbox.so
+	[ -f /usr/local/lib/libgoogledrive.so ] && rm /usr/local/lib/libgoogledrive.so
 
 default:
 	echo nothing done!

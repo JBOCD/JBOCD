@@ -21,8 +21,8 @@ class FileManager{
 		static int nameCount;
 		static struct file_store* free_list;
 
-		static unsigned int maxAllocate;
-		static unsigned int curAllocate;
+		static unsigned long long maxAllocate;
+		static unsigned long long curAllocate;
 
 		static const char* dirpath;
 
@@ -33,7 +33,7 @@ class FileManager{
 		static void init();
 		static void newProcess();
 		static void endProcess();
-		static unsigned int* newTemp(unsigned int fileSize);
+		static unsigned int* newTemp(unsigned long long fileSize);
 		static void deleteTemp(unsigned int* file_store);
 		static void freeTemp();
 		static int open(unsigned int* file, char mode);
@@ -43,8 +43,8 @@ class FileManager{
 int FileManager::nameCount = 0;
 struct file_store* FileManager::free_list = NULL;
 
-unsigned int FileManager::maxAllocate = 0;
-unsigned int FileManager::curAllocate = 0;
+unsigned long long FileManager::maxAllocate = 0;
+unsigned long long FileManager::curAllocate = 0;
 
 const char* FileManager::dirpath = NULL;
 
