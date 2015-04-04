@@ -6,7 +6,7 @@ Client::Client(){
 	maxDelTry = (i=json_object_get_int(Config::get("file.maxDeleteRetry"  ))) > 255 ? 255 : i;
 
 	setbuf(stdout, NULL);// debug use
-	
+
 	info->object = this;
 	info->fptr = &Client::responseThread;
 	inBuffer = (unsigned char*) MemManager::allocate(WebSocket::getBufferSize());
@@ -543,7 +543,6 @@ void Client::readGetFile(){
 
 			info->num_of_chunk = res->getUInt("num_of_chunk");
 			info->size = res->getUInt64("size");
-			addResponseQueue(0x22, (void*) info);
 			delete res;
 			get_all_chunk->setUInt(1, info->ldid);
 			get_all_chunk->setUInt64(2, info->fileID);
@@ -564,6 +563,7 @@ void Client::readGetFile(){
 
 				Thread::create(&_thread_redirector, (void*) chunk_info);
 			}
+			addResponseQueue(0x22, (void*) info);
 		}else{
 			info->num_of_chunk = 0;
 			info->size = 0;
@@ -778,7 +778,6 @@ void Client::processGetFileChunk(void *arg){
 			break;
 		}
 	}
-
 	if(dir){
 		// get handle Cloud Drive driver
 		for(CDDriver** cd = cd_root->root; *cd; cd++){

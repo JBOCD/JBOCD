@@ -25,7 +25,7 @@ class WebSocket{
 		static unsigned long long maskKey;
 		static unsigned long long payloadLen;
 
-		static void decode(unsigned long long* in, unsigned long long* out, unsigned long long maskKey, int len);
+		static unsigned long long decode(unsigned long long* in, unsigned long long* out, unsigned long long maskKey, int len);
 		static unsigned int  getHandShakeResponse(unsigned char* request, unsigned char* buf, int* err);	// return buffer size, err return error code, request == buf is safe
 
 	public:

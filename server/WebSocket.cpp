@@ -84,7 +84,7 @@ unsigned int WebSocket::recvMsg(unsigned char* buf, int* err){
 		// continue read
 		// nothing done
 		// bye.
-		decode((unsigned long long*) (buf), (unsigned long long*) (buf), maskKey, readLen);
+		maskKey = decode((unsigned long long*) (buf), (unsigned long long*) (buf), maskKey, readLen);
 		payloadLen -= readLen;
 	}else if(!readLen || buf[0] & 0x08){
 		// close connection opcode
@@ -106,18 +106,18 @@ unsigned int WebSocket::recvMsg(unsigned char* buf, int* err){
 		if(payloadLen < 126){
 			memcpy(                   &maskKey     , buf + 2, 4);
 			memcpy( ((unsigned char*) &maskKey) + 4, buf + 2, 4);
-			decode((unsigned long long*) (buf+6), (unsigned long long*) (buf), maskKey, readLen-=6);
+			maskKey = decode((unsigned long long*) (buf+6), (unsigned long long*) (buf), maskKey, readLen-=6);
 		}else if(payloadLen == 126){
 			payloadLen = Network::toShort(buf+2);
 			memcpy(                   &maskKey     , buf + 4, 4);
 			memcpy( ((unsigned char*) &maskKey) + 4, buf + 4, 4);
-			decode((unsigned long long*) (buf+8), (unsigned long long*) (buf), maskKey, readLen-=8);
+			maskKey = decode((unsigned long long*) (buf+8), (unsigned long long*) (buf), maskKey, readLen-=8);
 		}else{
 			buf[2] &= 0x7F;
 			payloadLen=Network::toLongLong(buf+2);
 			memcpy(                   &maskKey     , buf + 10, 4);
 			memcpy( ((unsigned char*) &maskKey) + 4, buf + 10, 4);
-			decode((unsigned long long*) (buf+14), (unsigned long long*) (buf), maskKey, readLen-=14);
+			maskKey = decode((unsigned long long*) (buf+14), (unsigned long long*) (buf), maskKey, readLen-=14);
 		}
 		payloadLen -= readLen;
 	}
@@ -147,17 +147,18 @@ unsigned int WebSocket::close(unsigned char* buf){
 	return (*send)(buf, 2);
 }
 
-void WebSocket::decode(unsigned long long* in, unsigned long long* out, unsigned long long maskKey, int len){
+unsigned long long WebSocket::decode(unsigned long long* in, unsigned long long* out, unsigned long long maskKey, int len){
 	unsigned long long tmp = maskKey;
 	int i=0, j=(len+7)/8;
 	for(;i<j;i++,in++,out++){
 		*out = *in ^ maskKey;
 	}
 
-	if(j=len%8){
+	if(payloadLen && (j=len%8)){
 		memcpy(                   &maskKey         , ((unsigned char*) &tmp) + j, 8-j);
 		memcpy( ((unsigned char*) &maskKey) + 8-j,                     &tmp     , j  );
 	}
+	return maskKey;
 }
 
 bool WebSocket::willExceed(unsigned long long curLen, unsigned long long addLen){

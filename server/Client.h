@@ -134,6 +134,7 @@ class Client{
 			unsigned int* tmpFile;
 			unsigned int status;
 			unsigned int chunkSize;
+			struct client_read_file_info * debug;
 		};
 
 		//0x28
