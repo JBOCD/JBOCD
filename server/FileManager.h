@@ -28,6 +28,7 @@ class FileManager{
 
 		static pthread_mutex_t file_mutex;
 		static pthread_mutex_t allocate_mutex;
+		static pthread_cond_t allocate_cond;
 		FileManager(){}
 	public:
 		static void init();
@@ -50,6 +51,7 @@ const char* FileManager::dirpath = NULL;
 
 pthread_mutex_t FileManager::file_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t FileManager::allocate_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t FileManager::allocate_cond = PTHREAD_COND_INITIALIZER;
 
 #include "FileManager.cpp"
 

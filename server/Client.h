@@ -167,6 +167,7 @@ class Client{
 
 // Client End
 		pthread_mutex_t client_end_mutex;
+		pthread_cond_t client_end_cond;
 
 // CloudDriver handler list
 		struct clouddriver_handler_list* cd_handler;
@@ -182,6 +183,7 @@ class Client{
 		struct client_response* res_root;
 		struct client_response* res_last;
 		pthread_mutex_t res_mutex;
+		pthread_cond_t res_cond;
 		pthread_mutex_t res_queue_mutex;
 
 // prepareStatement List

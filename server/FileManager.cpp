@@ -26,20 +26,22 @@ unsigned int* FileManager::newTemp(unsigned long long fileSize){
 	struct file_store* result = NULL;
 	do{
 		pthread_mutex_lock(&allocate_mutex);
-		if(maxAllocate >= curAllocate + fileSize){
-			curAllocate += fileSize;
-			pthread_mutex_lock(&file_mutex);
-			if(free_list){
-				result = free_list;
-				free_list = free_list->next;
-			}else{
-				result = (struct file_store*) MemManager::allocate(sizeof(struct file_store));
-				result->filename = nameCount++;
-			}
-			pthread_mutex_unlock(&file_mutex);
+		while(maxAllocate < curAllocate + fileSize){
+			pthread_cond_wait(&allocate_cond, &allocate_mutex);
 		}
+		pthread_mutex_unlock(&allocate_mutex);
+
+		pthread_mutex_lock(&file_mutex);
+		curAllocate += fileSize;
+		if(free_list){
+			result = free_list;
+			free_list = free_list->next;
+		}else{
+			result = (struct file_store*) MemManager::allocate(sizeof(struct file_store));
+			result->filename = nameCount++;
+		}
+		pthread_mutex_unlock(&file_mutex);
 	}while(!result);
-	pthread_mutex_unlock(&allocate_mutex);
 	result->fileSize = fileSize;
 	return (unsigned int*) (((char*)result)+sizeof(struct file_store)-sizeof(unsigned int));
 }
@@ -49,8 +51,12 @@ void FileManager::deleteTemp(unsigned int* file){
 	tmp->next=free_list;
 	free_list = tmp;
 	curAllocate -= tmp->fileSize;
-	pthread_mutex_unlock(&file_mutex);
+
+	pthread_mutex_lock(&allocate_mutex);
+	pthread_cond_signal(&allocate_cond);
 	pthread_mutex_unlock(&allocate_mutex);
+
+	pthread_mutex_unlock(&file_mutex);
 }
 
 void FileManager::freeTemp(){

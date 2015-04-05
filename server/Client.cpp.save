@@ -23,8 +23,9 @@ Client::Client(){
 	pthread_mutex_init(&res_mutex, NULL);
 	pthread_mutex_init(&res_queue_mutex, NULL);
 	pthread_mutex_init(&client_end_mutex, NULL);
-	pthread_cond_init(&client_end_cond, NULL);
-	pthread_cond_init(&res_cond, NULL);
+printf("res_mutes lock");
+	pthread_mutex_lock(&res_mutex);
+printf("done.\n");
 	pthread_create(&(responseThread_tid), NULL, &_thread_redirector, info);
 	commandInterpreter();
 }
@@ -253,9 +254,12 @@ void Client::commandInterpreter(){
 		}
 
 	}while(!isEnd);
+printf("client_end_mutex lock ");
 	pthread_mutex_lock(&client_end_mutex);
-	pthread_cond_wait(&client_end_cond, &client_end_mutex);
-	pthread_mutex_unlock(&client_end_mutex); // waiting response Thread end
+printf("done.\n");
+printf("client_end_mutex lock ");
+	pthread_mutex_lock(&client_end_mutex); // waiting response Thread end
+printf("done.\n");
 }
 
 /* resposne function */
@@ -264,17 +268,16 @@ void Client::addResponseQueue(unsigned char command, void* info){
 	tmp->command = command;
 	tmp->info = info;
 	tmp->next = NULL;
+printf("res_queue_mutex lock ");
 	pthread_mutex_lock(&res_queue_mutex);
+printf("done.\n");
 	if(res_root){
 		res_last = ( res_last->next = tmp );
 	}else{
 		res_last = ( res_root = tmp );
 	}
-	pthread_mutex_lock(&res_mutex);
-	pthread_cond_signal(&res_cond);
-	pthread_mutex_unlock(&res_mutex);
-
 	pthread_mutex_unlock(&res_queue_mutex);
+	pthread_mutex_unlock(&res_mutex);
 }
 
 void Client::responseThread(void* arg){
@@ -282,10 +285,6 @@ void Client::responseThread(void* arg){
 	struct client_response* tmp;
 	do{
 		pthread_mutex_lock(&res_mutex);
-		while(!res_root){
-			pthread_cond_wait(&res_cond, &res_mutex);
-		}
-		pthread_mutex_unlock(&res_mutex);
 		while(res_root){
 			pthread_mutex_lock(&res_queue_mutex);
 			res_root = ( tmp = res_root )->next;
@@ -330,7 +329,7 @@ void Client::responseThread(void* arg){
 			MemManager::free(tmp);
 		}
 	}while(!isEnd); // how to comfirm no thread running ??
-	pthread_cond_signal(&client_end_cond);
+	pthread_mutex_unlock(&client_end_mutex);
 	MemManager::free(arg);
 }
 

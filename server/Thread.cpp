@@ -9,19 +9,18 @@ void* Thread::createThreadFromQueue(void* arg){
 	struct thread_info* tmp;
 	do{
 		pthread_mutex_lock(&new_thread_mutex);
-		if(!createRoot) continue;
-		pthread_mutex_lock(&counter_mutex);
+		while(!createRoot){
+			pthread_cond_wait(&new_thread_cond, &new_thread_mutex);
+		}
+		pthread_mutex_unlock(&new_thread_mutex);
 		if(maxThread <= curThread){
-			pthread_mutex_unlock(&counter_mutex);
 			Thread::clearThread();
-			continue;
 		}
 		curThread++;
-		pthread_mutex_unlock(&counter_mutex);
+
 		pthread_mutex_lock(&new_thread_queue_mutex);
 		createRoot = (tmp = createRoot)->next;
 		pthread_mutex_unlock(&new_thread_queue_mutex);
-		pthread_mutex_unlock(&new_thread_mutex);
 		pthread_create(&(tmp->tid), NULL, &Thread::newThreadInit, (void*) tmp);
 	}while(1);
 }
@@ -37,8 +36,11 @@ void Thread::create(void* (*callback)(void*), void* arg){
 	}else{
 		createRootLast = (createRoot = thread);
 	}
-	pthread_mutex_unlock(&new_thread_queue_mutex);
+	pthread_mutex_lock(&new_thread_mutex);
+	pthread_cond_signal(&new_thread_cond);
 	pthread_mutex_unlock(&new_thread_mutex);
+
+	pthread_mutex_unlock(&new_thread_queue_mutex);
 }
 
 void* Thread::newThreadInit(void* info){
@@ -56,13 +58,15 @@ void Thread::addDelQueue(pthread_t t){
 	pthread_mutex_lock(&del_queue_mutex);
 	val->next = delRoot;
 	delRoot = val;
+	pthread_cond_signal(&del_queue_cond);
 	pthread_mutex_unlock(&del_queue_mutex);
-	pthread_mutex_unlock(&new_thread_mutex);
 }
-void Thread::clearThread(){
+void Thread::clearThread(){ // call only in createThreadFromQueue, no need add counter mutex
 	struct thread_queue* tmp;
 	pthread_mutex_lock(&del_queue_mutex);
-	pthread_mutex_lock(&counter_mutex);
+	if(!delRoot){
+		pthread_cond_wait(&del_queue_cond, &del_queue_mutex);
+	}
 	while(delRoot){
 		tmp = delRoot;
 		printf("[%05d] Clear Ended thread (%u).\n", getpid(), (int) tmp->t);
@@ -70,8 +74,6 @@ void Thread::clearThread(){
 		curThread--;
 		delRoot = delRoot->next;
 		MemManager::free(tmp);
-		pthread_mutex_unlock(&new_thread_mutex);
 	}
-	pthread_mutex_unlock(&counter_mutex);
 	pthread_mutex_unlock(&del_queue_mutex);
 }

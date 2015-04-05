@@ -22,10 +22,14 @@ class Thread{
 		static struct thread_info* createRoot;
 		static struct thread_info* createRootLast;
 		static pthread_t create_thread_tid;
+
+		static pthread_cond_t del_queue_cond;
+		static pthread_cond_t new_thread_cond;
+
 		static pthread_mutex_t del_queue_mutex;
 		static pthread_mutex_t new_thread_mutex;
 		static pthread_mutex_t new_thread_queue_mutex;
-		static pthread_mutex_t counter_mutex;
+
 		static int maxThread;
 		static int curThread;
 
@@ -45,10 +49,12 @@ struct thread_info* Thread::createRoot = NULL;
 struct thread_info* Thread::createRootLast = NULL;
 pthread_t Thread::create_thread_tid = 0;
 
+pthread_cond_t Thread::del_queue_cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t Thread::new_thread_cond = PTHREAD_COND_INITIALIZER;
+
 pthread_mutex_t Thread::del_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t Thread::new_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t Thread::new_thread_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t Thread::counter_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int Thread::maxThread = 0;
 int Thread::curThread = 0;
