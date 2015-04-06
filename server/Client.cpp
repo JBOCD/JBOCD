@@ -447,6 +447,7 @@ void Client::readSaveFile(){
 	unsigned long long diff;
 	info->object = this;
 	info->fptr = &Client::processSaveFile;
+	info->retry = 0;
 	info->status = 0;
 	info->operationID = *(inBuffer +1);
 	info->ldid = Network::toInt(inBuffer + 2);
@@ -560,6 +561,7 @@ void Client::readGetFile(){
 				chunk_info = (struct client_read_file*) MemManager::allocate(sizeof(struct client_read_file));
 				chunk_info->object = this;
 				chunk_info->fptr = &Client::processGetFileChunk;
+				chunk_info->retry = 0;
 				chunk_info->operationID = *(inBuffer + 1);
 				chunk_info->ldid = info->ldid;
 				chunk_info->cdid = res->getUInt("cdid");
@@ -623,6 +625,7 @@ void Client::readDelFile(){
 
 				chunk_info->object = this;
 				chunk_info->fptr = &Client::processDelChunk;
+				chunk_info->retry = 0;
 				chunk_info->chunkName = (char*) MemManager::allocate( strlen( res->getString("chunk_name").c_str() ) + 1 );
 				strcpy(chunk_info->chunkName, res->getString("chunk_name")->c_str());
 				chunk_info->dir = NULL;
@@ -692,6 +695,7 @@ void Client::readDelChunk(){
 
 				chunk_info->object = this;
 				chunk_info->fptr = &Client::processDelChunk;
+				chunk_info->retry = 0;
 				chunk_info->chunkName = (char*) MemManager::allocate( strlen( res->getString("chunk_name").c_str() ) + 1 );
 				strcpy(chunk_info->chunkName, res->getString("chunk_name")->c_str());
 
@@ -756,8 +760,16 @@ void Client::processSaveFile(void *arg){
 		}
 		sprintf(remotePath, "%s%s", dir, info->remoteName);
 		FileManager::getTempPath(info->tmpFile, localPath);
-		for(counter = 0; counter < maxGetTry && cdDriver->put(remotePath, localPath); counter++);
-		if(counter >= maxGetTry) info->status = RETRY_LIMIT_EXCEED;
+		if(cdDriver->put(remotePath, localPath)){
+			if(info->retry++ > maxGetTry){
+				info->status = RETRY_LIMIT_EXCEED;
+			}else{
+				Thread::create(&_thread_redirector, (void*) info);
+				MemManager::free(remotePath);
+				MemManager::free(localPath);
+				return;
+			}
+		}
 	}else{
 		info->status = CD_NOT_IN_LD;
 	}
@@ -799,8 +811,16 @@ void Client::processGetFileChunk(void *arg){
 		sprintf(remotePath, "%s%s", dir, info->chunkName);
 		FileManager::getTempPath(info->tmpFile, localPath);
 
-		for(counter = 0; counter < maxGetTry && cdDriver->get(remotePath, localPath); counter++);
-		if(counter >= maxGetTry) info->status = RETRY_LIMIT_EXCEED;
+		if(cdDriver->get(remotePath, localPath)){
+			if(info->retry++ > maxGetTry){
+				info->status = RETRY_LIMIT_EXCEED;
+			}else{
+				Thread::create(&_thread_redirector, (void*) info);
+				MemManager::free(remotePath);
+				MemManager::free(localPath);
+				return;
+			}
+		}
 	}
 	MemManager::free(remotePath);
 	MemManager::free(localPath);
@@ -814,8 +834,15 @@ void Client::processDelChunk(void *arg){
 	int counter;
 	if(info->dir){
 		sprintf(remotePath, "%s%s", info->dir, info->chunkName);
-		for(counter = 0; counter < maxDelTry && (*(info->cd))->del(remotePath); counter++);
-//		info->list[i].status = counter < maxDelTry ? DELETE : RETRY_LIMIT_EXCEED;
+		if((*(info->cd))->del(remotePath)){
+			if(info->retry++ > maxGetTry){
+//				info->status = RETRY_LIMIT_EXCEED;
+			}else{
+				Thread::create(&_thread_redirector, (void*) info);
+				MemManager::free(remotePath);
+				return;
+			}
+		}
 	}
 	MemManager::free(remotePath);
 

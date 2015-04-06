@@ -102,6 +102,7 @@ class Client{
 		struct client_save_file{
 			Client* object;
 			void (Client::*fptr)(void*);
+			unsigned char retry;
 			unsigned char operationID;
 			unsigned int ldid;
 			unsigned int cdid;
@@ -125,6 +126,7 @@ class Client{
 		struct client_read_file{
 			Client* object;
 			void (Client::*fptr)(void*);
+			unsigned char retry;
 			unsigned char operationID;
 			unsigned int ldid;
 			unsigned int cdid;
@@ -134,13 +136,13 @@ class Client{
 			unsigned int* tmpFile;
 			unsigned int status;
 			unsigned int chunkSize;
-			struct client_read_file_info * debug;
 		};
 
 		//0x28
 		struct client_del_chunk{
 			Client* object;
 			void (Client::*fptr)(void*);
+			unsigned char retry;
 			CDDriver** cd;
 			char*  dir;
 			char* chunkName;
