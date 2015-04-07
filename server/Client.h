@@ -94,7 +94,9 @@ class Client{
 		struct client_make_file{
 			unsigned char operationID;
 			unsigned int ldid;
+			unsigned long long parentid;
 			unsigned long long fileid;
+			unsigned long long size;
 			char* name;
 		};
 
@@ -205,6 +207,7 @@ class Client{
 		sql::PreparedStatement* del_file;
 		sql::PreparedStatement* get_all_chunk;
 		sql::PreparedStatement* remove_chunk;
+		sql::PreparedStatement* insert_log;
 
 		sql::ResultSet *res;
 
@@ -232,7 +235,7 @@ class Client{
 		bool checkLogicalDrive(unsigned int ldid);
 
 		void prepareStatement();
-		void doHandshake();
+		void takeLog(unsigned int ldid, unsigned int cdid, unsigned long long fileid, unsigned int seqnum, const char* action, const char* description, unsigned long long size);
 
 		void commandInterpreter();
 

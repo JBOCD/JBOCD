@@ -194,8 +194,23 @@ void Client::prepareStatement(){
 	get_child = MySQL::getCon()->prepareStatement("SELECT * FROM `directory` WHERE `ldid`=? AND `parentid`=?");
 	//	used in 0x28, 0x29
 	remove_chunk = MySQL::getCon()->prepareStatement("DELETE FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
+
+	// logging
+	insert_log = MySQL::getCon()->prepareStatement("INSERT INTO `log` (`ldid`, `cdid`, `fileid`, `seqnum`, `action`, `description`, `size`) VALUE (?, ?, ?, ?, ?, ?, ?)");
 }
 
+void Client::takeLog(unsigned int ldid, unsigned int cdid, unsigned long long fileid, unsigned int seqnum, const char* action, const char* description, unsigned long long size){
+
+	insert_log->setUInt(1, ldid);
+	insert_log->setUInt(2, cdid);
+	insert_log->setUInt(3, fileid);
+	insert_log->setUInt(4, seqnum);
+	insert_log->setUInt(5, action);
+	insert_log->setUInt(6, description);
+	insert_log->setUInt(7, size);
+	
+	insert_log->executeUpdate();
+}
 
 void Client::commandInterpreter(){
 
@@ -417,27 +432,30 @@ void Client::readCreateFile(){
 
 	info->operationID = *(inBuffer+1);
 	info->ldid = Network::toInt(inBuffer+2);
+	info->parentid = Network::toLongLong(inBuffer+6);
+	info->size = Network::toLongLong(inBuffer+14);
 	info->name = (char*) Network::toChars(inBuffer+22);
-
 	if(checkLogicalDrive(info->ldid)){
 		get_next_fileid->setUInt(1, info->ldid);
 		res = get_next_fileid->executeQuery();
 		while(res->next()){
 			info->fileid=res->getUInt64("fileid");
 			create_file->setUInt(1, info->ldid);
-			create_file->setUInt64(2, Network::toLongLong(inBuffer+6)); // what if parentID not exist in database?
+			create_file->setUInt64(2, info->parentid); // what if parentID not exist in database?
 			create_file->setUInt64(3, info->fileid);
 			create_file->setString(4, info->name);
-			create_file->setUInt64(5, Network::toLongLong(inBuffer+14));
+			create_file->setUInt64(5, info->size);
 			if(!create_file->executeUpdate()){
 				info->fileid = 0;
+				takeLog(info->ldid, 0, info->fileid, 0, "Create File", "Fail", info->size);
+			}else{
+				takeLog(info->ldid, 0, info->fileid, 0, "Create File", "Successful", info->size);
 			}
 			break;
 		}
 		delete res;
 	}
-	addResponseQueue(0x20, (void*) info);
-}
+	addResponseQueue(0x20, (void*) info);}
 // 0x21 //done
 void Client::readSaveFile(){
 	struct client_save_file* info = (struct client_save_file*) MemManager::allocate(sizeof(struct client_save_file));
@@ -494,7 +512,7 @@ void Client::readSaveFile(){
 			update_clouddrive_alloc_size->setUInt(3, info->cdid);
 
 			(res = check_chunk_size->executeQuery())->next();
-			if(diff = res->getUInt64(1) - info->chunkSize){ // chunk size no update != file name no update
+			if(!(diff = res->getUInt64(1) - info->chunkSize)){ // chunk size no update != file name no update
 				info->status = NO_CHANGE;
 			}else{
 				check_clouddrive_size->setUInt64(1,diff);
@@ -504,35 +522,42 @@ void Client::readSaveFile(){
 				(res = check_clouddrive_size->executeQuery())->next();
 				if(res->getUInt(1)){
 					info->status = CHUNK_SIZE_EXCEED_CD_LIMIT;
+					takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Chunk size exceed Cloud Drive limit", info->chunkSize);
 				}else{
 					delete res;
 					(res = check_logicaldrive_size->executeQuery())->next();
 					if(res->getUInt(1)){
 						info->status = CHUNK_SIZE_EXCEED_LD_LIMIT;
+						takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Chunk size exceed Logical Drive limit", info->chunkSize);
 					}
 					if(update_clouddrive_alloc_size->executeUpdate()){
 						info->status = INSERT;
+						takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Insert", info->chunkSize);
 					}else{
 						info->status = CD_NOT_IN_LD;
+						takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Cloud Drive is not in Logical Drive", info->chunkSize);
 					}
 				}
 			}
 			// executeUpdate return { 1 == Insert / No Change, 2 == update}
 			if(info->status >= NO_CHANGE){
-				info->status = update_chunk_info->executeUpdate() - info->status;
+				info->status = update_chunk_info->executeUpdate();
+				takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", info->status == NO_CHANGE ? "Update Chunk but size no changed" : (info->status == INSERT ? "Insert Chunk" : "Update Chunk size"), info->chunkSize);
 			}
 			delete res;
 			if(info->status >= NO_CHANGE){
-				Thread::create(&_thread_redirector, (void*) info);
+				Thread::create(&_thread_redirector, (void*) info, 0);
 			}else{
 				addResponseQueue(0x21, info);
 			}
 		}else{
 			info->status = CHUNK_SIZE_ZERO_EXCEPTION;
+			takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Fail: Chunk size is zero", info->chunkSize);
 			addResponseQueue(0x21, info);
 		}
 	}else{
 		info->status = PERMISSION_DENY;
+		takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Fail: Permission Deny, Not owner of Logical Drive", info->chunkSize);
 		addResponseQueue(0x21, info);
 	}
 }
@@ -572,12 +597,14 @@ void Client::readGetFile(){
 				chunk_info->chunkName = (char*) MemManager::allocate(strlen(res->getString("chunk_name")->c_str())+1);
 				strcpy(chunk_info->chunkName, res->getString("chunk_name")->c_str());
 
-				Thread::create(&_thread_redirector, (void*) chunk_info);
+				Thread::create(&_thread_redirector, (void*) chunk_info, 1);
 			}
+			takeLog(info->ldid, 0, info->fileid, 0, "Get File", "Successful", info->size);
 			addResponseQueue(0x22, (void*) info);
 		}else{
 			info->num_of_chunk = 0;
 			info->size = 0;
+			takeLog(info->ldid, 0, info->fileid, 0, "Get File", "Fail: No chunk", info->size);
 			addResponseQueue(0x22, (void*) info);
 		}
 		delete res;
@@ -616,6 +643,8 @@ void Client::readDelFile(){
 			get_all_chunk->setUInt64(2, info->fileid);
 			res = get_all_chunk->executeQuery();
 
+			takeLog(ldid, 0, fileid, 0, "Delete File", "Succesful", info->size);
+
 			// get logical drive info
 			for(ld = ld_root->root; ld && ld->ldid != info->ldid; ld = ld->next);
 
@@ -641,7 +670,7 @@ void Client::readDelFile(){
 				// get handle Cloud Drive driver
 					for(chunk_info->cd = cd_root->root; *chunk_info->cd && !(*chunk_info->cd)->isID(cdid); chunk_info->cd++);
 					if(*chunk_info->cd){
-						Thread::create(&_thread_redirector, (void*) chunk_info);
+						Thread::create(&_thread_redirector, (void*) chunk_info, 2);
 					}
 				}
 			}
@@ -684,6 +713,7 @@ void Client::readDelChunk(){
 		get_all_chunk->setUInt(1, info->ldid);
 		get_all_chunk->setUInt64(2, info->fileid);
 		res = get_all_chunk->executeQuery();
+		takeLog(info->ldid, 0, info->fileid, 0, "Delete File Chunk", "Succesful", info->size);
 
 		// get logical drive info
 		for(ld = ld_root->root; ld && ld->ldid != info->ldid; ld = ld->next);
@@ -709,7 +739,7 @@ void Client::readDelChunk(){
 				// get handle Cloud Drive driver
 				for(chunk_info->cd = cd_root->root; *chunk_info->cd && !(*chunk_info->cd)->isID(cdid); chunk_info->cd++);
 				if(*chunk_info->cd){
-					Thread::create(&_thread_redirector, (void*) chunk_info);
+					Thread::create(&_thread_redirector, (void*) chunk_info, 2);
 				}
 			//}
 

@@ -19,8 +19,8 @@ struct thread_info{
 class Thread{
 	private:
 		static struct thread_queue* delRoot;
-		static struct thread_info* createRoot;
-		static struct thread_info* createRootLast;
+		static struct thread_info** createRoot;
+		static struct thread_info** createRootLast;
 		static pthread_t create_thread_tid;
 
 		static pthread_cond_t del_queue_cond;
@@ -40,13 +40,12 @@ class Thread{
 		Thread();
 	public:
 		static void init();
-		static void create(void* (*callback)(void*), void* info);
+		static void create(void* (*callback)(void*), void* info,  unsigned char priority);
 };
 
 struct thread_queue* Thread::delRoot = NULL;
-struct thread_info* Thread::createRoot = NULL;
-
-struct thread_info* Thread::createRootLast = NULL;
+struct thread_info** Thread::createRoot = NULL;
+struct thread_info** Thread::createRootLast = NULL;
 pthread_t Thread::create_thread_tid = 0;
 
 pthread_cond_t Thread::del_queue_cond = PTHREAD_COND_INITIALIZER;
