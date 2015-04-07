@@ -2,15 +2,15 @@ void Thread::init(){
 	maxThread = json_object_get_int(Config::get("server.maxThreadPerConnection"));
 	maxThread = maxThread < 1 ? 1 : maxThread;
 	pthread_create(&create_thread_tid, NULL, &Thread::createThreadFromQueue, NULL); // thread end only when process end
-	createRoot = (struct thread_info**)malloc(size(struct thread_info*) * 6);
+	createRoot = (struct thread_info**)malloc(sizeof(struct thread_info*) * 6);
 	createRootLast = createRoot+3;
-	memset(createRoot, 0, size(struct thread_info*) * 6);
+	memset(createRoot, 0, sizeof(struct thread_info*) * 6);
 }
 
 void* Thread::createThreadFromQueue(void* arg){
 	// implement some priority algorithm for priority queue
-	static const unsigned char* priorityFactor = {5,4,2};
-	static unsigned int* priority = {0,0,0};
+	static const unsigned char priorityFactor[3] = {5,4,2};
+	static unsigned int priority[3] = {0,0,0};
 	static unsigned char selected;
 	struct thread_info* tmp;
 	do{
@@ -20,20 +20,14 @@ void* Thread::createThreadFromQueue(void* arg){
 		}
 		pthread_mutex_unlock(&new_thread_mutex);
 
-		pthread_mutex_lock(&del_queue_mutex);
 		if(maxThread <= curThread){
 			Thread::clearThread();
-			while(maxThread <= curThread){
-				pthread_cond_wait(&del_queue_cond);
-				Thread::clearThread();
-			}
 		}
 		curThread++;
-		pthread_mutex_unlock(&del_queue_mutex);
 
 		pthread_mutex_lock(&new_thread_queue_mutex);
-		if(priority[0]*priorityFactor[1] > priority[1]*priorityFactor[0] || (!createRoot[0] && !(priority[0] = 0)){
-			if(priority[1]*priorityFactor[2] > priority[2]*priorityFactor[1] || (!createRoot[1] && !(priority[1] = 0)){
+		if(!createRoot[0] || (createRoot[1] || createRoot[2]) && priority[0]*priorityFactor[1] > priority[1]*priorityFactor[0]){
+			if(!createRoot[1] || createRoot[2] && priority[1]*priorityFactor[2] > priority[2]*priorityFactor[1]){
 				selected = 2;
 			}else{
 				selected = 1;

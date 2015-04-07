@@ -203,11 +203,11 @@ void Client::takeLog(unsigned int ldid, unsigned int cdid, unsigned long long fi
 
 	insert_log->setUInt(1, ldid);
 	insert_log->setUInt(2, cdid);
-	insert_log->setUInt(3, fileid);
+	insert_log->setUInt64(3, fileid);
 	insert_log->setUInt(4, seqnum);
-	insert_log->setUInt(5, action);
-	insert_log->setUInt(6, description);
-	insert_log->setUInt(7, size);
+	insert_log->setString(5, action);
+	insert_log->setString(6, description);
+	insert_log->setUInt64(7, size);
 	
 	insert_log->executeUpdate();
 }
@@ -596,15 +596,14 @@ void Client::readGetFile(){
 
 				chunk_info->chunkName = (char*) MemManager::allocate(strlen(res->getString("chunk_name")->c_str())+1);
 				strcpy(chunk_info->chunkName, res->getString("chunk_name")->c_str());
-
 				Thread::create(&_thread_redirector, (void*) chunk_info, 1);
 			}
-			takeLog(info->ldid, 0, info->fileid, 0, "Get File", "Successful", info->size);
+			takeLog(info->ldid, 0, info->fileID, 0, "Get File", "Successful", info->size);
 			addResponseQueue(0x22, (void*) info);
 		}else{
 			info->num_of_chunk = 0;
 			info->size = 0;
-			takeLog(info->ldid, 0, info->fileid, 0, "Get File", "Fail: No chunk", info->size);
+			takeLog(info->ldid, 0, info->fileID, 0, "Get File", "Fail: No chunk", info->size);
 			addResponseQueue(0x22, (void*) info);
 		}
 		delete res;
@@ -643,7 +642,7 @@ void Client::readDelFile(){
 			get_all_chunk->setUInt64(2, info->fileid);
 			res = get_all_chunk->executeQuery();
 
-			takeLog(ldid, 0, fileid, 0, "Delete File", "Succesful", info->size);
+			takeLog(ldid, 0, fileid, 0, "Delete File", "Succesful", 0);
 
 			// get logical drive info
 			for(ld = ld_root->root; ld && ld->ldid != info->ldid; ld = ld->next);
@@ -713,7 +712,7 @@ void Client::readDelChunk(){
 		get_all_chunk->setUInt(1, info->ldid);
 		get_all_chunk->setUInt64(2, info->fileid);
 		res = get_all_chunk->executeQuery();
-		takeLog(info->ldid, 0, info->fileid, 0, "Delete File Chunk", "Succesful", info->size);
+		takeLog(info->ldid, 0, info->fileid, 0, "Delete File Chunk", "Succesful", 0);
 
 		// get logical drive info
 		for(ld = ld_root->root; ld && ld->ldid != info->ldid; ld = ld->next);
@@ -794,7 +793,7 @@ void Client::processSaveFile(void *arg){
 			if(info->retry++ > maxGetTry){
 				info->status = RETRY_LIMIT_EXCEED;
 			}else{
-				Thread::create(&_thread_redirector, (void*) info);
+				Thread::create(&_thread_redirector, (void*) info, 0);
 				MemManager::free(remotePath);
 				MemManager::free(localPath);
 				return;
@@ -845,7 +844,7 @@ void Client::processGetFileChunk(void *arg){
 			if(info->retry++ > maxGetTry){
 				info->status = RETRY_LIMIT_EXCEED;
 			}else{
-				Thread::create(&_thread_redirector, (void*) info);
+				Thread::create(&_thread_redirector, (void*) info, 1);
 				MemManager::free(remotePath);
 				MemManager::free(localPath);
 				return;
@@ -868,7 +867,7 @@ void Client::processDelChunk(void *arg){
 			if(info->retry++ > maxGetTry){
 //				info->status = RETRY_LIMIT_EXCEED;
 			}else{
-				Thread::create(&_thread_redirector, (void*) info);
+				Thread::create(&_thread_redirector, (void*) info, 2);
 				MemManager::free(remotePath);
 				return;
 			}
