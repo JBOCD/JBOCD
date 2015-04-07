@@ -1,6 +1,6 @@
-#include "GoogleDrive.h"
+#include "Dropbox.h"
 
-GoogleDrive::GoogleDrive(const char* accessToken, unsigned int id){
+Dropbox::Dropbox(const char* accessToken, unsigned int id){
 	pid_t pid;
 
 	pthread_t tid;
@@ -24,7 +24,7 @@ GoogleDrive::GoogleDrive(const char* accessToken, unsigned int id){
 		this->id = id;
 
 		tmpStr = (char*) malloc(256);
-		pthread_create(&tid, NULL, &GoogleDrive::thread_reader, this);
+		pthread_create(&tid, NULL, &Dropbox::thread_reader, this);
 
 		root = NULL;
 	}else if(pid == 0){
@@ -37,23 +37,23 @@ GoogleDrive::GoogleDrive(const char* accessToken, unsigned int id){
 		dup2(c_stdout[1], STDOUT_FILENO);
 		close(c_stdout[1]);
 
-		execlp("python", "python", "/var/JBOCD/module/googledrive/daemon.py", accessToken, NULL);
+		execlp("python", "python", "/var/JBOCD/module/dropbox/daemon.py", accessToken, NULL);
 		exit(1);
 	}else{
 		printf("Can't fork a handler. Bye.\n");
 		exit(1);
 	}
 }
-int GoogleDrive::get(char* remoteFilePath, char* localFilePath){
+int Dropbox::get(char* remoteFilePath, char* localFilePath){
 	return general("get", remoteFilePath, localFilePath);
 }
-int GoogleDrive::put(char* remoteFilePath, char* localFilePath){
+int Dropbox::put(char* remoteFilePath, char* localFilePath){
 	return general("put", remoteFilePath, localFilePath);
 }
-int GoogleDrive::del(char* remoteFilePath){
+int Dropbox::del(char* remoteFilePath){
 	return general("delete", remoteFilePath, "");
 }
-int GoogleDrive::general(const char* command, const char* remoteFilePath, const char* localFilePath){
+int Dropbox::general(const char* command, const char* remoteFilePath, const char* localFilePath){
 	unsigned int opID;
 	int status;
 	bool isDone = false;
@@ -109,15 +109,15 @@ int GoogleDrive::general(const char* command, const char* remoteFilePath, const 
 
 	return isClosed ? 500 : status;
 }
-bool GoogleDrive::isID(unsigned int id){
+bool Dropbox::isID(unsigned int id){
 	return this->id == id;
 }
-unsigned int GoogleDrive::getID(){
+unsigned int Dropbox::getID(){
 	return this->id;
 }
 
-void* GoogleDrive::thread_reader(void* arg){
-	GoogleDrive* that = (GoogleDrive*)arg;
+void* Dropbox::thread_reader(void* arg){
+	Dropbox* that = (Dropbox*)arg;
 	char a[] = {0,0};
 	struct result_queue* r;
 	while(1){
@@ -146,10 +146,10 @@ void* GoogleDrive::thread_reader(void* arg){
 	}
 }
 
-GoogleDrive::~GoogleDrive(){
+Dropbox::~Dropbox(){
 	if(tmpStr) free(tmpStr);
 }
 
 CDDriver* createObject(const char* accessToken, unsigned int id){
-	return new GoogleDrive(accessToken, id);
+	return new Dropbox(accessToken, id);
 }

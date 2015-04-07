@@ -8,7 +8,7 @@
 #include <pthread.h>
 #include "CDDriver.h"
 
-class GoogleDrive: public CDDriver{
+class Dropbox: public CDDriver{
 	private:
 
 		struct result_queue {
@@ -41,8 +41,8 @@ class GoogleDrive: public CDDriver{
 		int general(const char* command, const char* remoteFilePath, const char* localFilePath);
 		unsigned int id;
 	public:
-		~GoogleDrive();
-		GoogleDrive(const char* accessToken, unsigned int id);
+		~Dropbox();
+		Dropbox(const char* accessToken, unsigned int id);
 		int get(char* remotefilePath, char* localfilePath);
 		int put(char* remotefilePath, char* localfilePath);
 		int del(char* remotefilePath);
