@@ -26,8 +26,8 @@ void* Thread::createThreadFromQueue(void* arg){
 		curThread++;
 
 		pthread_mutex_lock(&new_thread_queue_mutex);
-		if(!createRoot[0] || (createRoot[1] || createRoot[2]) && priority[0]*priorityFactor[1] > priority[1]*priorityFactor[0]){
-			if(!createRoot[1] || createRoot[2] && priority[1]*priorityFactor[2] > priority[2]*priorityFactor[1]){
+		if(!createRoot[0] || (createRoot[1] || createRoot[2]) && priority[0]*priorityFactor[1] > priority[1]*priorityFactor[0] && !(priority[0] && (priority[0] = 0))){
+			if(!createRoot[1] || createRoot[2] && priority[1]*priorityFactor[2] > priority[2]*priorityFactor[1] && !(priority[1] && (priority[1] = 0))){
 				selected = 2;
 			}else{
 				selected = 1;
