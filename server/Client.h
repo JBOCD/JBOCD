@@ -149,7 +149,6 @@ class Client{
 			unsigned long long size;
 			unsigned int numOfChunk;
 			unsigned int deletedChunk;
-			pthread_mutex_t mutex;
 			char* name;
 			unsigned char command;
 		};
@@ -163,6 +162,7 @@ class Client{
 			char*  dir;
 			char* chunkName;
 			struct client_del_file* file_info;
+			pthread_mutex_t mutex;
 
 //			unsigned char status;
 		};
