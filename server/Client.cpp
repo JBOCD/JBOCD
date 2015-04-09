@@ -897,7 +897,6 @@ void Client::processDelChunk(void *arg){
 		}
 	}
 	MemManager::free(remotePath);
-	MemManager::free(info);
 
 //	End thread
 //	collect all resourse here
