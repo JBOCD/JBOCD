@@ -890,7 +890,7 @@ void Client::processDelChunk(void *arg){
 		}else{
 			pthread_mutex_lock(&info->mutex);
 			info->deletedChunk++;
-			if(info->deleteChunk == info->numOfChunk){
+			if(info->file_info->deleteChunk == info->file_info->numOfChunk){
 				addResponseQueue(info->command, info->file_info);
 			}
 			pthread_mutex_unlock(&info->mutex);
