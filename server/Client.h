@@ -140,6 +140,20 @@ class Client{
 			unsigned int chunkSize;
 		};
 
+		// 0x28, 0x29
+		struct client_del_file{
+			unsigned char operationID;
+			unsigned int ldid;
+			unsigned long long parentid;
+			unsigned long long fileid;
+			unsigned long long size;
+			unsigned int numOfChunk;
+			unsigned int deletedChunk;
+			pthread_mutex_t mutex;
+			char* name;
+			unsigned char command;
+		};
+
 		//0x28
 		struct client_del_chunk{
 			Client* object;
@@ -148,17 +162,10 @@ class Client{
 			CDDriver** cd;
 			char*  dir;
 			char* chunkName;
+			struct client_del_file* file_info;
+
 //			unsigned char status;
 		};
-		// 0x28, 0x29
-		struct client_del_file{
-			unsigned char operationID;
-			unsigned int ldid;
-			unsigned long long parentid;
-			unsigned long long fileid;
-			char* name;
-		};
-
 		pthread_t responseThread_tid;
 
 // Client Info

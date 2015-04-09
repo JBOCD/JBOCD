@@ -631,8 +631,11 @@ void Client::readDelFile(){
 			info->ldid = ldid;
 			info->parentid = res->getUInt("parentid");
 			info->fileid = fileid;
+			info->size = res->getUInt64("size");
 			info->name = (char*) MemManager::allocate( strlen( res->getString("name").c_str() ) + 1 );
 			strcpy(info->name, res->getString("name")->c_str());
+			info->command = 0x28;
+			pthread_mutex_init(&info->mutex, NULL);
 
 			del_file->setUInt( 1, ldid );
 			del_file->setUInt64( 2, fileid );
@@ -642,6 +645,9 @@ void Client::readDelFile(){
 			get_all_chunk->setUInt(1, info->ldid);
 			get_all_chunk->setUInt64(2, info->fileid);
 			res = get_all_chunk->executeQuery();
+
+			info->numOfChunk = res->rowsCount();
+			info->deletedChunk = 0;
 
 			takeLog(ldid, 0, fileid, 0, "Delete File", "Succesful", info->size);
 
@@ -658,6 +664,7 @@ void Client::readDelFile(){
 				chunk_info->chunkName = (char*) MemManager::allocate( strlen( res->getString("chunk_name").c_str() ) + 1 );
 				strcpy(chunk_info->chunkName, res->getString("chunk_name")->c_str());
 				chunk_info->dir = NULL;
+				chunk_info->file_info = info;
 
 				for(struct client_clouddrive* cd = ld->root; cd; cd = cd->next){
 					if(cd->cdid == cdid){
@@ -677,7 +684,9 @@ void Client::readDelFile(){
 			remove_chunk->setUInt(1, info->ldid);
 			remove_chunk->setUInt64(2, info->fileid);
 			remove_chunk->executeUpdate();
-			addResponseQueue(0x28, info);
+			if(!info->numOfChunk){
+				addResponseQueue(0x28, info);
+			}
 		}
 		delete res;
 
@@ -704,6 +713,8 @@ void Client::readDelChunk(){
 	info->operationID = *(inBuffer+1);
 	info->ldid = Network::toInt(inBuffer + 2);
 	info->fileid = Network::toLongLong(inBuffer + 6) ;
+	info->command = 0x29;
+	pthread_mutex_init(&info->mutex, NULL);
 
 	if(checkLogicalDrive(info->ldid)){
 		unsigned int cdid;
@@ -714,6 +725,9 @@ void Client::readDelChunk(){
 		get_all_chunk->setUInt64(2, info->fileid);
 		res = get_all_chunk->executeQuery();
 		takeLog(info->ldid, 0, info->fileid, 0, "Delete File Chunk", "Succesful", info->size);
+
+		info->numOfChunk = res->rowsCount();
+		info->deletedChunk = 0;
 
 		// get logical drive info
 		for(ld = ld_root->root; ld && ld->ldid != info->ldid; ld = ld->next);
@@ -748,7 +762,9 @@ void Client::readDelChunk(){
 		remove_chunk->setUInt(1, info->ldid);
 		remove_chunk->setUInt64(2, info->fileid);
 		remove_chunk->executeUpdate();
-		addResponseQueue(0x28, info);
+		if(!info->numOfChunk){
+			addResponseQueue(0x29, info);
+		}
 	}else{
 		MemManager::free(info);
 	}
@@ -872,9 +888,17 @@ void Client::processDelChunk(void *arg){
 				MemManager::free(remotePath);
 				return;
 			}
+		}else{
+			pthread_mutex_lock(&info->mutex);
+			info->deletedChunk++;
+			if(info->deleteChunk == info->numOfChunk){
+				addResponseQueue(info->command, info->file_info);
+			}
+			pthread_mutex_unlock(&info->mutex);
 		}
 	}
 	MemManager::free(remotePath);
+	MemManager::free(info);
 
 //	End thread
 //	collect all resourse here
