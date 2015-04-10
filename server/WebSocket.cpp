@@ -92,6 +92,7 @@ unsigned int WebSocket::recvMsg(unsigned char* buf, int* err){
 		buf[1] = 0;
 		readLen = 1;
 		payloadLen = 0;
+		isFin = true;
 	}else if( ! (buf[1] & 0x80) ){
 		// close connection with error
 		// mask is not 1
@@ -99,6 +100,7 @@ unsigned int WebSocket::recvMsg(unsigned char* buf, int* err){
 		buf[1] = 0;
 		readLen = 1;
 		payloadLen = 0;
+		isFin = true;
 		err && (*err |= ERR_WRONG_WS_PROTOCOL);
 	}else{
 		isFin = !!(*buf & 0x80);

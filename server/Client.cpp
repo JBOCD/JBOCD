@@ -882,21 +882,25 @@ void Client::processDelChunk(void *arg){
 		sprintf(remotePath, "%s%s", info->dir, info->chunkName);
 		if((*(info->cd))->del(remotePath)){
 			if(info->retry++ > maxGetTry){
+fprintf(stderr, "Retry Del End %d, %s\n", info->retry, info->chunkName);
 //				info->status = RETRY_LIMIT_EXCEED;
-				addResponseQueue(info->file_info->command, info->file_info);
+//				addResponseQueue(info->file_info->command, info->file_info);
 			}else{
+fprintf(stderr, "Retry Del %d, %s\n", info->retry, info->chunkName);
 				Thread::create(&_thread_redirector, (void*) info, 2);
 				MemManager::free(remotePath);
 				return;
 			}
-		}else{
-			pthread_mutex_lock(&info->file_info->mutex);
-			info->file_info->deletedChunk++;
-			if(info->file_info->deletedChunk == info->file_info->numOfChunk){
-				addResponseQueue(info->file_info->command, info->file_info);
-			}
-			pthread_mutex_unlock(&info->file_info->mutex);
 		}
+		pthread_mutex_lock(&info->file_info->mutex);
+fprintf(stderr, "Done %s\n", info->chunkName);
+		info->file_info->deletedChunk++;
+		if(info->file_info->deletedChunk == info->file_info->numOfChunk){
+			addResponseQueue(info->file_info->command, info->file_info);
+		}
+		pthread_mutex_unlock(&info->file_info->mutex);
+}else{
+fprintf(stderr, "WTF? no dir?? %s\n", info->chunkName);
 	}
 	MemManager::free(remotePath);
 
