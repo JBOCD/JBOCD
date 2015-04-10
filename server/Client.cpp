@@ -860,6 +860,7 @@ void Client::processGetFileChunk(void *arg){
 			if(info->retry++ > maxGetTry){
 				info->status = RETRY_LIMIT_EXCEED;
 			}else{
+				FileManager::deleteTemp(info->tmpFile);
 				Thread::create(&_thread_redirector, (void*) info, 1);
 				MemManager::free(remotePath);
 				MemManager::free(localPath);
@@ -883,8 +884,6 @@ void Client::processDelChunk(void *arg){
 			if(info->retry++ > maxGetTry){
 //				info->status = RETRY_LIMIT_EXCEED;
 				addResponseQueue(info->file_info->command, info->file_info);
-				MemManager::free(remotePath);
-				return;
 			}else{
 				Thread::create(&_thread_redirector, (void*) info, 2);
 				MemManager::free(remotePath);
