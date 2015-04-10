@@ -882,6 +882,9 @@ void Client::processDelChunk(void *arg){
 		if((*(info->cd))->del(remotePath)){
 			if(info->retry++ > maxGetTry){
 //				info->status = RETRY_LIMIT_EXCEED;
+				addResponseQueue(info->file_info->command, info->file_info);
+				MemManager::free(remotePath);
+				return;
 			}else{
 				Thread::create(&_thread_redirector, (void*) info, 2);
 				MemManager::free(remotePath);

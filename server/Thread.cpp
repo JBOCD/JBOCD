@@ -20,12 +20,13 @@ void* Thread::createThreadFromQueue(void* arg){
 		}
 		pthread_mutex_unlock(&new_thread_mutex);
 
+		pthread_mutex_lock(&del_queue_mutex);
 		if(maxThread <= curThread){
 			Thread::clearThread();
 		}
 		curThread++;
+		pthread_mutex_unlock(&del_queue_mutex);
 
-		pthread_mutex_lock(&new_thread_queue_mutex);
 		if(!createRoot[0] || (createRoot[1] || createRoot[2]) && priority[0]*priorityFactor[1] > priority[1]*priorityFactor[0] && !(priority[0] && (priority[0] = 0))){
 			if(!createRoot[1] || createRoot[2] && priority[1]*priorityFactor[2] > priority[2]*priorityFactor[1] && !(priority[1] && (priority[1] = 0))){
 				selected = 2;
@@ -36,6 +37,8 @@ void* Thread::createThreadFromQueue(void* arg){
 			selected = 0;
 		}
 		priority[selected] = priority[selected] + 1 % priorityFactor[selected];
+
+		pthread_mutex_lock(&new_thread_queue_mutex);
 		createRoot[selected] = (tmp = createRoot[selected])->next;
 		pthread_mutex_unlock(&new_thread_queue_mutex);
 		pthread_create(&(tmp->tid), NULL, &Thread::newThreadInit, (void*) tmp);
@@ -83,7 +86,6 @@ void Thread::addDelQueue(pthread_t t){
 }
 void Thread::clearThread(){ // call only in createThreadFromQueue, no need add counter mutex
 	struct thread_queue* tmp;
-	pthread_mutex_lock(&del_queue_mutex);
 	if(!delRoot){
 		pthread_cond_wait(&del_queue_cond, &del_queue_mutex);
 	}
@@ -95,5 +97,4 @@ void Thread::clearThread(){ // call only in createThreadFromQueue, no need add c
 		delRoot = delRoot->next;
 		MemManager::free(tmp);
 	}
-	pthread_mutex_unlock(&del_queue_mutex);
 }
