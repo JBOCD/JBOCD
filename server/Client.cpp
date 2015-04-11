@@ -174,6 +174,7 @@ void Client::prepareStatement(){
 	//	used in 0x20
 	get_next_fileid = MySQL::getCon()->prepareStatement("SELECT IFNULL((SELECT MAX(fileid)+1 FROM `directory` WHERE `ldid`=? GROUP BY ldid), 1) as `fileid`");
 	create_file = MySQL::getCon()->prepareStatement("INSERT INTO `directory` (`ldid`, `parentid`, `fileid`, `name`, `size`) VALUE (?,?,?,?,?)");
+	update_file = MySQL::getCon()->prepareStatement("INSERT INTO `directory` SET `parentid`=?, `size`=?, `name`=? WHERE `ldid`=? AND `fileid`=?");
 
 	//	used in 0x21
 	check_chunk_size = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT `size` FROM `filechunk` WHERE `ldid`=? AND `cdid`=? AND `fileid`=? AND `seqnum`=?), 0) as ``");
@@ -432,28 +433,42 @@ void Client::readCreateFile(){
 
 	info->operationID = *(inBuffer+1);
 	info->ldid = Network::toInt(inBuffer+2);
-	info->parentid = Network::toLongLong(inBuffer+6);
-	info->size = Network::toLongLong(inBuffer+14);
-	info->name = (char*) Network::toChars(inBuffer+22);
+	info->fileid = Network::toLongLong(inBuffer+6);
+	info->parentid = Network::toLongLong(inBuffer+14);
+	info->size = Network::toLongLong(inBuffer+22);
+	info->name = (char*) Network::toChars(inBuffer+30);
 	if(checkLogicalDrive(info->ldid)){
-		get_next_fileid->setUInt(1, info->ldid);
-		res = get_next_fileid->executeQuery();
-		while(res->next()){
-			info->fileid=res->getUInt64("fileid");
-			create_file->setUInt(1, info->ldid);
-			create_file->setUInt64(2, info->parentid); // what if parentID not exist in database?
-			create_file->setUInt64(3, info->fileid);
-			create_file->setString(4, info->name);
-			create_file->setUInt64(5, info->size);
-			if(!create_file->executeUpdate()){
-				info->fileid = 0;
-				takeLog(info->ldid, 0, info->fileid, 0, "Create File", "Fail", info->size);
-			}else{
-				takeLog(info->ldid, 0, info->fileid, 0, "Create File", "Successful", info->size);
+		if(info->fileid == 0){ // create File
+			get_next_fileid->setUInt(1, info->ldid);
+			res = get_next_fileid->executeQuery();
+			while(res->next()){
+				info->fileid=res->getUInt64("fileid");
+				create_file->setUInt(1, info->ldid);
+				create_file->setUInt64(2, info->parentid); // what if parentID not exist in database?
+				create_file->setUInt64(3, info->fileid);
+				create_file->setString(4, info->name);
+				create_file->setUInt64(5, info->size);
+				if(!create_file->executeUpdate()){
+					takeLog(info->ldid, 0, info->fileid = 0, 0, "Create File", "Fail", info->size);
+				}else{
+					takeLog(info->ldid, 0, info->fileid, 0, "Create File", "Successful", info->size);
+				}
+				break;
 			}
-			break;
+			delete res;
+		}else{ // update File
+//INSERT INTO `directory` SET `parentid`=?, `size`=?, `name`=? WHERE `ldid`=? AND `fileid`=?
+			update_file->setUInt64(1, info->parentid);
+			update_file->setUInt64(2, info->size);
+			update_file->setString(3, info->name);
+			update_file->setUInt(4, info->ldid);
+			update_file->setUInt64(5, info->fileid);
+			if(!update_file->executeUpdate()){
+					takeLog(info->ldid, 0, info->fileid = 0, 0, "Update File", "Fail", info->size);
+			}else{
+				takeLog(info->ldid, 0, info->fileid, 0, "Update File", "Successful", info->size);
+			}
 		}
-		delete res;
 	}
 	addResponseQueue(0x20, (void*) info);}
 // 0x21 //done

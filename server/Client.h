@@ -203,6 +203,7 @@ class Client{
 		sql::PreparedStatement* get_list;
 		sql::PreparedStatement* get_next_fileid;
 		sql::PreparedStatement* create_file;
+		sql::PreparedStatement* update_file;
 		sql::PreparedStatement* check_chunk_size;
 		sql::PreparedStatement* check_clouddrive_size;
 		sql::PreparedStatement* check_logicaldrive_size;
