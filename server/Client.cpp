@@ -174,7 +174,7 @@ void Client::prepareStatement(){
 	//	used in 0x20
 	get_next_fileid = MySQL::getCon()->prepareStatement("SELECT IFNULL((SELECT MAX(fileid)+1 FROM `directory` WHERE `ldid`=? GROUP BY ldid), 1) as `fileid`");
 	create_file = MySQL::getCon()->prepareStatement("INSERT INTO `directory` (`ldid`, `parentid`, `fileid`, `name`, `size`) VALUE (?,?,?,?,?)");
-	update_file = MySQL::getCon()->prepareStatement("INSERT INTO `directory` SET `parentid`=?, `size`=?, `name`=? WHERE `ldid`=? AND `fileid`=?");
+	update_file = MySQL::getCon()->prepareStatement("UPDATE `directory` SET `parentid`=?, `size`=?, `name`=? WHERE `ldid`=? AND `fileid`=?");
 
 	//	used in 0x21
 	check_chunk_size = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT `size` FROM `filechunk` WHERE `ldid`=? AND `cdid`=? AND `fileid`=? AND `seqnum`=?), 0) as ``");
