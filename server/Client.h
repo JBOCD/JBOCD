@@ -98,6 +98,7 @@ class Client{
 			unsigned long long fileid;
 			unsigned long long size;
 			char* name;
+			unsigned char status;
 		};
 
 		// 0x21
@@ -113,7 +114,7 @@ class Client{
 			char* remoteName;
 			unsigned int* tmpFile;
 			unsigned int chunkSize;
-			unsigned char status;
+			char status;
 		};
 
 		// 0x22
@@ -204,9 +205,10 @@ class Client{
 		sql::PreparedStatement* get_next_fileid;
 		sql::PreparedStatement* create_file;
 		sql::PreparedStatement* update_file;
+		sql::PreparedStatement* check_logicaldrive_size;
+		sql::PreparedStatement* update_logicaldrive_size;
 		sql::PreparedStatement* check_chunk_size;
 		sql::PreparedStatement* check_clouddrive_size;
-		sql::PreparedStatement* check_logicaldrive_size;
 		sql::PreparedStatement* update_chunk_info;
 		sql::PreparedStatement* update_clouddrive_alloc_size;
 		sql::PreparedStatement* get_file_chunk;
@@ -226,7 +228,7 @@ class Client{
 		static const char INSERT;
 		static const char NO_CHANGE;
 		static const char CHUNK_SIZE_EXCEED_CD_LIMIT;
-		static const char CHUNK_SIZE_EXCEED_LD_LIMIT;
+		static const char FILE_SIZE_EXCEED_LD_LIMIT;
 		static const char CHUNK_SIZE_ZERO_EXCEPTION;
 		static const char CD_NOT_IN_LD;
 		static const char RETRY_LIMIT_EXCEED;
@@ -286,7 +288,7 @@ const char Client::UPDATE = 2;
 const char Client::INSERT = 1;
 const char Client::NO_CHANGE = 0;
 const char Client::CHUNK_SIZE_EXCEED_CD_LIMIT = -1;
-const char Client::CHUNK_SIZE_EXCEED_LD_LIMIT = -2;
+const char Client::FILE_SIZE_EXCEED_LD_LIMIT = -2;
 const char Client::CHUNK_SIZE_ZERO_EXCEPTION = -3;
 const char Client::CD_NOT_IN_LD = -4;
 const char Client::RETRY_LIMIT_EXCEED = -5;

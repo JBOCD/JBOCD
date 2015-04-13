@@ -37,11 +37,12 @@ void* Thread::createThreadFromQueue(void* arg){
 			selected = 0;
 		}
 		priority[selected] = priority[selected] + 1 % priorityFactor[selected];
-
-		pthread_mutex_lock(&new_thread_queue_mutex);
-		createRoot[selected] = (tmp = createRoot[selected])->next;
-		pthread_mutex_unlock(&new_thread_queue_mutex);
-		pthread_create(&(tmp->tid), NULL, &Thread::newThreadInit, (void*) tmp);
+		if(createRoot[selected]){
+			pthread_mutex_lock(&new_thread_queue_mutex);
+			createRoot[selected] = (tmp = createRoot[selected])->next;
+			pthread_mutex_unlock(&new_thread_queue_mutex);
+			pthread_create(&(tmp->tid), NULL, &Thread::newThreadInit, (void*) tmp);
+		}
 	}while(1);
 }
 
@@ -50,10 +51,10 @@ void Thread::create(void* (*callback)(void*), void* arg, unsigned char priority)
 	thread->cb = callback;
 	thread->arg = arg;
 	thread->next = NULL;
-	pthread_mutex_lock(&new_thread_queue_mutex);
 	if(priority >= 3){
 		priority = 2;
 	}
+	pthread_mutex_lock(&new_thread_queue_mutex);
 	if(createRoot[priority]){
 		createRootLast[priority] = (createRootLast[priority]->next = thread);
 	}else{

@@ -79,6 +79,7 @@ case 0x20 00100000: client [new / udpate] [directory / file]
 
 case 0x20 00100000: server new directory / file
 	1 byte int: Operation ID
+	1 byte int: status
 	8 byte int: File ID ( not 0 is file made/update, 0 is file create fail)
 
 case 0x21 00100001: client put

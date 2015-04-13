@@ -175,11 +175,12 @@ void Client::prepareStatement(){
 	get_next_fileid = MySQL::getCon()->prepareStatement("SELECT IFNULL((SELECT MAX(fileid)+1 FROM `directory` WHERE `ldid`=? GROUP BY ldid), 1) as `fileid`");
 	create_file = MySQL::getCon()->prepareStatement("INSERT INTO `directory` (`ldid`, `parentid`, `fileid`, `name`, `size`) VALUE (?,?,?,?,?)");
 	update_file = MySQL::getCon()->prepareStatement("UPDATE `directory` SET `parentid`=?, `size`=?, `name`=? WHERE `ldid`=? AND `fileid`=?");
+	check_logicaldrive_size = MySQL::getCon()->prepareStatement("SELECT `size`-`alloc_size`<=? FROM `logicaldriveinfo` WHERE `ldid`=?");
+	update_logicaldrive_size = MySQL::getCon()->prepareStatement("UPDATE `logicaldriveinfo` SET `alloc_size`<=? WHERE `ldid`=?");
 
 	//	used in 0x21
 	check_chunk_size = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT `size` FROM `filechunk` WHERE `ldid`=? AND `cdid`=? AND `fileid`=? AND `seqnum`=?), 0) as ``");
-	check_clouddrive_size = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT `size` - `alloc_size` < ? FROM `logicaldrivecontainer` WHERE `ldid`=? AND `cdid`=? ), 0) as ``");
-	check_logicaldrive_size = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT `a`.`size` - SUM(`b`.`alloc_size`) < ? FROM `logicaldriveinfo` as `a`, `logicaldrivecontainer` as `b` WHERE `a`.`ldid`=? AND `a`.`ldid`=`b`.`ldid` ), 0) as ``");
+	check_clouddrive_size = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT `size` - `alloc_size` <= ? FROM `logicaldrivecontainer` WHERE `ldid`=? AND `cdid`=? ), 0) as ``");
 	update_chunk_info = MySQL::getCon()->prepareStatement("REPLACE INTO `filechunk` (`ldid`, `cdid`, `fileid`, `seqnum`, `chunk_name`, `size`) VALUE (?,?,?,?,?,?)");
 	update_clouddrive_alloc_size = MySQL::getCon()->prepareStatement("UPDATE `logicaldrivecontainer` SET `alloc_size`=`alloc_size`+? WHERE `ldid`=? AND `cdid`=?");
 
@@ -187,7 +188,7 @@ void Client::prepareStatement(){
 	get_file_chunk = MySQL::getCon()->prepareStatement("SELECT COUNT(`a`.`seqnum`) as `num_of_chunk`, `b`.`size` as `size` FROM `filechunk` as `a`, `directory` as `b` WHERE `a`.`ldid`=? AND `a`.`fileid`=? AND `a`.`ldid`= `b`.`ldid` AND `a`.`fileid`=`b`.`fileid` GROUP BY `b`.`fileid`, `b`.`size`");
 
 	//	used in 0x22, 0x28, 0x29
-	get_all_chunk = MySQL::getCon()->prepareStatement("SELECT * FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
+	get_all_chunk = MySQL::getCon()->prepareStatement("SELECT * FROM `filechunk` WHERE `ldid`=? AND `fileid`=? ORDER BY `ldid`, `fileid`, `seqnum`");
 
 	//	used in 0x28
 	del_file = MySQL::getCon()->prepareStatement("DELETE FROM `directory` WHERE `ldid`=? AND `fileid`=?");
@@ -272,6 +273,11 @@ void Client::commandInterpreter(){
 	pthread_mutex_lock(&client_end_mutex);
 	pthread_cond_wait(&client_end_cond, &client_end_mutex);
 	pthread_mutex_unlock(&client_end_mutex); // waiting response Thread end
+
+	do{
+		WebSocket::recvMsg(inBuffer, &err); // comfirm closed
+	}while(inBuffer[0] != 0x88);
+
 }
 
 /* resposne function */
@@ -352,8 +358,6 @@ void Client::responseThread(void* arg){
 
 /* Read Command */
 
-// !important, how about login not ok? pointer is not set properly
-
 // 0x00, 0x01 //done
 void Client::readLogin(){
 	struct client_list_root* info = (struct client_list_root*) MemManager::allocate(sizeof(struct client_list_root));
@@ -369,18 +373,12 @@ void Client::readLogin(){
 	pstmt->setUInt(2, account_id);
 	res = pstmt->executeQuery();
 	if(res->rowsCount() == 1){
-// not remove token
-//		delete pstmt;
-//		pstmt = MySQL::getCon()->prepareStatement("DELETE FROM `token` WHERE `id`=?");
-//		pstmt->setUInt(1, account_id);
-//		pstmt->executeUpdate();
-		delete res;
 		loadCloudDrive();
 		loadLogicalDrive();
 	}else{
 		account_id=0;
-		delete res;
 	}
+	delete res;
 	delete pstmt;
 	addResponseQueue(!!account_id /* 0x00 || 0x01 */ , info);
 }
@@ -439,35 +437,67 @@ void Client::readCreateFile(){
 	info->name = (char*) Network::toChars(inBuffer+30);
 	if(checkLogicalDrive(info->ldid)){
 		if(info->fileid == 0){ // create File
-			get_next_fileid->setUInt(1, info->ldid);
-			res = get_next_fileid->executeQuery();
-			while(res->next()){
-				info->fileid=res->getUInt64("fileid");
-				create_file->setUInt(1, info->ldid);
-				create_file->setUInt64(2, info->parentid); // what if parentID not exist in database?
-				create_file->setUInt64(3, info->fileid);
-				create_file->setString(4, info->name);
-				create_file->setUInt64(5, info->size);
-				if(!create_file->executeUpdate()){
-					takeLog(info->ldid, 0, info->fileid = 0, 0, "Create File", "Fail", info->size);
-				}else{
-					takeLog(info->ldid, 0, info->fileid, 0, "Create File", "Successful", info->size);
+			check_logicaldrive_size->setUInt64(1, info->size);
+			check_logicaldrive_size->setUInt(2, info->ldid);
+			(res = check_logicaldrive_size->executeQuery())->next();
+			if(res->getUInt(0)){
+				info->status = FILE_SIZE_EXCEED_LD_LIMIT;
+			}else{
+				get_next_fileid->setUInt(1, info->ldid);
+				delete res;
+				res = get_next_fileid->executeQuery();
+				while(res->next()){
+					info->fileid=res->getUInt64("fileid");
+					update_logicaldrive_size->setUInt64(1, info->size);
+					update_logicaldrive_size->setUInt(1, info->ldid);
+					update_logicaldrive_size->executeUpdate();
+
+					create_file->setUInt(1, info->ldid);
+					create_file->setUInt64(2, info->parentid); // what if parentID not exist in database?
+					create_file->setUInt64(3, info->fileid);
+					create_file->setString(4, info->name);
+					create_file->setUInt64(5, info->size);
+					if(!create_file->executeUpdate()){
+						info->status = NO_CHANGE;
+						takeLog(info->ldid, 0, info->fileid = 0, 0, "Create File", "Fail", info->size);
+					}else{
+						info->status = INSERT;
+						takeLog(info->ldid, 0, info->fileid, 0, "Create File", "Successful", info->size);
+					}
+					break;
 				}
-				break;
 			}
 			delete res;
 		}else{ // update File
-//INSERT INTO `directory` SET `parentid`=?, `size`=?, `name`=? WHERE `ldid`=? AND `fileid`=?
-			update_file->setUInt64(1, info->parentid);
-			update_file->setUInt64(2, info->size);
-			update_file->setString(3, info->name);
-			update_file->setUInt(4, info->ldid);
-			update_file->setUInt64(5, info->fileid);
-			if(!update_file->executeUpdate()){
-					takeLog(info->ldid, 0, info->fileid = 0, 0, "Update File", "Fail", info->size);
+			get_file->setUInt(1, info->ldid);
+			get_file->setUInt64(1, info->fileid);
+			(res = get_file->executeQuery())->next();
+			long long diff = info->size - res->getUInt64("size"); // not yet test
+
+			check_logicaldrive_size->setInt64(1, diff);
+			check_logicaldrive_size->setUInt(2, info->ldid);
+			(res = check_logicaldrive_size->executeQuery())->next();
+			if(res->getUInt(0)){
+				info->status = FILE_SIZE_EXCEED_LD_LIMIT;
 			}else{
-				takeLog(info->ldid, 0, info->fileid, 0, "Update File", "Successful", info->size);
+				update_logicaldrive_size->setInt64(1, diff);
+				update_logicaldrive_size->setUInt(2, info->ldid);
+				update_logicaldrive_size->executeUpdate();
+
+				update_file->setUInt64(1, info->parentid);
+				update_file->setUInt64(2, info->size);
+				update_file->setString(3, info->name);
+				update_file->setUInt(4, info->ldid);
+				update_file->setUInt64(5, info->fileid);
+				if(!update_file->executeUpdate()){
+					info->status = NO_CHANGE;
+					takeLog(info->ldid, 0, info->fileid = 0, 0, "Update File", "Upload Chunk, but information has no changed", info->size);
+				}else{
+					info->status = UPDATE;
+					takeLog(info->ldid, 0, info->fileid, 0, "Update File", "Successful", info->size);
+				}
 			}
+			delete res;
 		}
 	}
 	addResponseQueue(0x20, (void*) info);}
@@ -477,7 +507,7 @@ void Client::readSaveFile(){
 	unsigned short bufShift = 0;
 	unsigned long long maxSaveSize;
 	int fd;
-	unsigned long long diff;
+	long long diff;
 	info->object = this;
 	info->fptr = &Client::processSaveFile;
 	info->retry = 0;
@@ -527,12 +557,12 @@ void Client::readSaveFile(){
 			update_clouddrive_alloc_size->setUInt(3, info->cdid);
 
 			(res = check_chunk_size->executeQuery())->next();
-			if(!(diff = res->getUInt64(1) - info->chunkSize)){ // chunk size no update != file name no update
+			if(!(diff = info->chunkSize - res->getUInt64(1))){ // chunk size no update != file name no update
 				info->status = NO_CHANGE;
 			}else{
-				check_clouddrive_size->setUInt64(1,diff);
-				check_logicaldrive_size->setUInt64(1,diff);
-				update_clouddrive_alloc_size->setUInt64(1, diff);
+				check_clouddrive_size->setInt64(1,diff);
+				check_logicaldrive_size->setInt64(1,diff);
+				update_clouddrive_alloc_size->setInt64(1, diff);
 				delete res;
 				(res = check_clouddrive_size->executeQuery())->next();
 				if(res->getUInt(1)){
@@ -542,12 +572,11 @@ void Client::readSaveFile(){
 					delete res;
 					(res = check_logicaldrive_size->executeQuery())->next();
 					if(res->getUInt(1)){
-						info->status = CHUNK_SIZE_EXCEED_LD_LIMIT;
+						info->status = FILE_SIZE_EXCEED_LD_LIMIT;
 						takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Chunk size exceed Logical Drive limit", info->chunkSize);
 					}
 					if(update_clouddrive_alloc_size->executeUpdate()){
 						info->status = INSERT;
-						takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Insert", info->chunkSize);
 					}else{
 						info->status = CD_NOT_IN_LD;
 						takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Cloud Drive is not in Logical Drive", info->chunkSize);
@@ -634,6 +663,8 @@ void Client::readDelFile(){
 	if(checkLogicalDrive(ldid)){
 		get_file->setUInt( 1, ldid );
 		get_file->setUInt64( 2, fileid );
+		update_clouddrive_alloc_size->setUInt(2, ldid);
+
 		res = get_file->executeQuery();
 		if(res->next()){
 			unsigned int cdid;
@@ -691,6 +722,10 @@ void Client::readDelFile(){
 				// get handle Cloud Drive driver
 					for(chunk_info->cd = cd_root->root; *chunk_info->cd && !(*chunk_info->cd)->isID(cdid); chunk_info->cd++);
 					if(*chunk_info->cd){
+						update_clouddrive_alloc_size->setInt64(1, -1L * res->getUInt("size"));
+						update_clouddrive_alloc_size->setUInt(3, cdid);
+						update_clouddrive_alloc_size->executeUpdate();
+
 						Thread::create(&_thread_redirector, (void*) chunk_info, 2);
 					}
 				}
@@ -767,6 +802,11 @@ void Client::readDelChunk(){
 				// get handle Cloud Drive driver
 				for(chunk_info->cd = cd_root->root; *chunk_info->cd && !(*chunk_info->cd)->isID(cdid); chunk_info->cd++);
 				if(*chunk_info->cd){
+					update_clouddrive_alloc_size->setInt64(1, -1L * res->getUInt("cdid"));
+					update_clouddrive_alloc_size->setUInt(2, info->ldid);
+					update_clouddrive_alloc_size->setUInt(3, cdid);
+					update_clouddrive_alloc_size->executeUpdate();
+
 					Thread::create(&_thread_redirector, (void*) chunk_info, 2);
 				}
 			//}
@@ -845,7 +885,6 @@ void Client::processGetFileChunk(void *arg){
 	CDDriver* cdDriver;
 	char* remotePath = (char*) MemManager::allocate(512);
 	char* localPath  = (char*) MemManager::allocate(512);
-	int counter;
 
 	// get remote store directory
 	for(struct client_logical_drive* ld = ld_root->root; ld; ld = ld->next){
@@ -897,25 +936,21 @@ void Client::processDelChunk(void *arg){
 		sprintf(remotePath, "%s%s", info->dir, info->chunkName);
 		if((*(info->cd))->del(remotePath)){
 			if(info->retry++ > maxGetTry){
-fprintf(stderr, "Retry Del End %d, %s\n", info->retry, info->chunkName);
 //				info->status = RETRY_LIMIT_EXCEED;
 //				addResponseQueue(info->file_info->command, info->file_info);
 			}else{
-fprintf(stderr, "Retry Del %d, %s\n", info->retry, info->chunkName);
 				Thread::create(&_thread_redirector, (void*) info, 2);
 				MemManager::free(remotePath);
 				return;
 			}
 		}
 		pthread_mutex_lock(&info->file_info->mutex);
-fprintf(stderr, "Done %s\n", info->chunkName);
 		info->file_info->deletedChunk++;
 		if(info->file_info->deletedChunk == info->file_info->numOfChunk){
 			addResponseQueue(info->file_info->command, info->file_info);
 		}
 		pthread_mutex_unlock(&info->file_info->mutex);
 }else{
-fprintf(stderr, "WTF? no dir?? %s\n", info->chunkName);
 	}
 	MemManager::free(remotePath);
 
@@ -1025,7 +1060,8 @@ void Client::sendCreateFile(void* a){
 	struct client_make_file* info = (struct client_make_file*) a;
 	*outBuffer = 0x20;
 	*(outBuffer+1) = info->operationID;
-	Network::toBytes(info->fileid, outBuffer+2);
+	Network::toBytes(info->status, outBuffer+2);
+	Network::toBytes(info->fileid, outBuffer+3);
 	WebSocket::sendMsg(outBuffer, 10);
 
 	MemManager::free(info->name);
