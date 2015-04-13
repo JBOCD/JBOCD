@@ -176,7 +176,7 @@ void Client::prepareStatement(){
 	create_file = MySQL::getCon()->prepareStatement("INSERT INTO `directory` (`ldid`, `parentid`, `fileid`, `name`, `size`) VALUE (?,?,?,?,?)");
 	update_file = MySQL::getCon()->prepareStatement("UPDATE `directory` SET `parentid`=?, `size`=?, `name`=? WHERE `ldid`=? AND `fileid`=?");
 	check_logicaldrive_size = MySQL::getCon()->prepareStatement("SELECT `size`-`alloc_size`<=? FROM `logicaldriveinfo` WHERE `ldid`=?");
-	update_logicaldrive_size = MySQL::getCon()->prepareStatement("UPDATE `logicaldriveinfo` SET `alloc_size`<=? WHERE `ldid`=?");
+	update_logicaldrive_size = MySQL::getCon()->prepareStatement("UPDATE `logicaldriveinfo` SET `alloc_size`=`alloc_size`+? WHERE `ldid`=?");
 
 	//	used in 0x21
 	check_chunk_size = MySQL::getCon()->prepareStatement("SELECT IFNULL( (SELECT `size` FROM `filechunk` WHERE `ldid`=? AND `cdid`=? AND `fileid`=? AND `seqnum`=?), 0) as ``");
@@ -546,7 +546,6 @@ void Client::readSaveFile(){
 			check_chunk_size->setUInt(4,info->seqnum);
 			check_clouddrive_size->setUInt(2, info->ldid);
 			check_clouddrive_size->setUInt(3, info->cdid);
-			check_logicaldrive_size->setUInt(2, info->ldid);
 			update_chunk_info->setUInt(1,info->ldid);
 			update_chunk_info->setUInt(2,info->cdid);
 			update_chunk_info->setUInt64(3,info->fileid);
@@ -561,7 +560,6 @@ void Client::readSaveFile(){
 				info->status = NO_CHANGE;
 			}else{
 				check_clouddrive_size->setInt64(1,diff);
-				check_logicaldrive_size->setInt64(1,diff);
 				update_clouddrive_alloc_size->setInt64(1, diff);
 				delete res;
 				(res = check_clouddrive_size->executeQuery())->next();
@@ -569,12 +567,6 @@ void Client::readSaveFile(){
 					info->status = CHUNK_SIZE_EXCEED_CD_LIMIT;
 					takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Chunk size exceed Cloud Drive limit", info->chunkSize);
 				}else{
-					delete res;
-					(res = check_logicaldrive_size->executeQuery())->next();
-					if(res->getUInt(1)){
-						info->status = FILE_SIZE_EXCEED_LD_LIMIT;
-						takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Chunk size exceed Logical Drive limit", info->chunkSize);
-					}
 					if(update_clouddrive_alloc_size->executeUpdate()){
 						info->status = INSERT;
 					}else{
