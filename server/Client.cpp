@@ -441,7 +441,7 @@ void Client::readCreateFile(){
 			check_logicaldrive_size->setUInt64(1, info->size);
 			check_logicaldrive_size->setUInt(2, info->ldid);
 			(res = check_logicaldrive_size->executeQuery())->next();
-			if(res->getUInt(0)){
+			if(res->getUInt(1)){
 				info->status = FILE_SIZE_EXCEED_LD_LIMIT;
 			}else{
 				get_next_fileid->setUInt(1, info->ldid);
@@ -450,7 +450,7 @@ void Client::readCreateFile(){
 				while(res->next()){
 					info->fileid=res->getUInt64("fileid");
 					update_logicaldrive_size->setUInt64(1, info->size);
-					update_logicaldrive_size->setUInt(1, info->ldid);
+					update_logicaldrive_size->setUInt(2, info->ldid);
 					update_logicaldrive_size->executeUpdate();
 
 					create_file->setUInt(1, info->ldid);
@@ -1055,7 +1055,7 @@ void Client::sendCreateFile(void* a){
 	*(outBuffer+1) = info->operationID;
 	Network::toBytes(info->status, outBuffer+2);
 	Network::toBytes(info->fileid, outBuffer+3);
-	WebSocket::sendMsg(outBuffer, 10);
+	WebSocket::sendMsg(outBuffer, 11);
 
 	MemManager::free(info->name);
 	MemManager::free(info);
