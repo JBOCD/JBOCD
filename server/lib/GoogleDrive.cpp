@@ -144,6 +144,7 @@ void* GoogleDrive::thread_reader(void* arg){
 		pthread_mutex_unlock(&that->read_mutex);
 
 	}
+	return NULL;
 }
 
 GoogleDrive::~GoogleDrive(){

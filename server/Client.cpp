@@ -373,12 +373,13 @@ void Client::readLogin(){
 	pstmt->setUInt(2, account_id);
 	res = pstmt->executeQuery();
 	if(res->rowsCount() == 1){
+		delete res;
 		loadCloudDrive();
 		loadLogicalDrive();
 	}else{
+		delete res;
 		account_id=0;
 	}
-	delete res;
 	delete pstmt;
 	addResponseQueue(!!account_id /* 0x00 || 0x01 */ , info);
 }

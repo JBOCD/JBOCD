@@ -142,8 +142,8 @@ void* Dropbox::thread_reader(void* arg){
 		}
 		pthread_cond_broadcast(&that->read_cond);
 		pthread_mutex_unlock(&that->read_mutex);
-
 	}
+	return NULL;
 }
 
 Dropbox::~Dropbox(){
