@@ -1099,7 +1099,7 @@ void Client::sendGetFileChunk(void* a){
 	Network::toBytes(info->status, outBuffer + 6);
 	Network::toBytes(info->chunkSize, outBuffer + 7);
 	if(fd > 0 && maxRead > 0){
-		while(readBytes = read(fd, outBuffer+15, maxRead)){
+		while(!info->status && readBytes = read(fd, outBuffer+15, maxRead)){
 			if(readBytes > 0){
 				totalReadBytes += readBytes;
 				Network::toBytes(readBytes, outBuffer + 11);
