@@ -1053,10 +1053,9 @@ void Client::sendCreateFile(void* a){
 	struct client_make_file* info = (struct client_make_file*) a;
 	*outBuffer = 0x20;
 	*(outBuffer+1) = info->operationID;
-	Network::toBytes(info->status, outBuffer+2);
+	*(outBuffer+2) = info->status;
 	Network::toBytes(info->fileid, outBuffer+3);
 	WebSocket::sendMsg(outBuffer, 11);
-
 	MemManager::free(info->name);
 	MemManager::free(info);
 }
@@ -1096,10 +1095,10 @@ void Client::sendGetFileChunk(void* a){
 	*outBuffer = 0x23;
 	*(outBuffer+1) = info->operationID;
 	Network::toBytes(info->seqnum, outBuffer + 2);
-	Network::toBytes(info->status, outBuffer + 6);
+	*(outBuffer+6) = info->status;
 	Network::toBytes(info->chunkSize, outBuffer + 7);
 	if(fd > 0 && maxRead > 0){
-		while(!info->status && readBytes = read(fd, outBuffer+15, maxRead)){
+		while(!info->status && (readBytes = read(fd, outBuffer+15, maxRead))){
 			if(readBytes > 0){
 				totalReadBytes += readBytes;
 				Network::toBytes(readBytes, outBuffer + 11);

@@ -114,7 +114,7 @@ class Client{
 			char* remoteName;
 			unsigned int* tmpFile;
 			unsigned int chunkSize;
-			char status;
+			unsigned char status;
 		};
 
 		// 0x22
@@ -137,7 +137,7 @@ class Client{
 			unsigned int seqnum;
 			char* chunkName;
 			unsigned int* tmpFile;
-			unsigned int status;
+			unsigned char status;
 			unsigned int chunkSize;
 		};
 
