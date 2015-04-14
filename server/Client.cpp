@@ -436,6 +436,7 @@ void Client::readCreateFile(){
 	info->parentid = Network::toLongLong(inBuffer+14);
 	info->size = Network::toLongLong(inBuffer+22);
 	info->name = (char*) Network::toChars(inBuffer+30);
+	info->status = 0;
 	if(checkLogicalDrive(info->ldid)){
 		if(info->fileid == 0){ // create File
 			check_logicaldrive_size->setUInt64(1, info->size);
@@ -630,6 +631,7 @@ void Client::readGetFile(){
 				chunk_info->fileid = info->fileID;
 				chunk_info->seqnum = res->getUInt("seqnum");
 				chunk_info->chunkSize = res->getUInt("size");
+				chunk_info->status = 0;
 
 				chunk_info->chunkName = (char*) MemManager::allocate(strlen(res->getString("chunk_name")->c_str())+1);
 				strcpy(chunk_info->chunkName, res->getString("chunk_name")->c_str());

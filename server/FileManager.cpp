@@ -47,14 +47,14 @@ unsigned int* FileManager::newTemp(unsigned long long fileSize){
 }
 void FileManager::deleteTemp(unsigned int* file){
 	struct file_store* tmp = (struct file_store*) (((char*)file)-sizeof(struct file_store)+sizeof(unsigned int));
-	char* tmpStr = (char*) MemManager::allocate(512);
-	FileManager::getTempPath(file, tmpStr);
+//	char* tmpStr = (char*) MemManager::allocate(512);
+//	FileManager::getTempPath(file, tmpStr);
 	pthread_mutex_lock(&file_mutex);
 	tmp->next=free_list;
 	free_list = tmp;
 	curAllocate -= tmp->fileSize;
-	::close(::open(tmpStr, O_WRONLY | O_TRUNC));
-	MemManager::free(tmpStr);
+//	::close(::open(tmpStr, O_WRONLY | O_TRUNC));
+//	MemManager::free(tmpStr);
 	pthread_mutex_lock(&allocate_mutex);
 	pthread_cond_signal(&allocate_cond);
 	pthread_mutex_unlock(&allocate_mutex);
