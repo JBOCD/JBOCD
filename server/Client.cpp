@@ -697,7 +697,7 @@ void Client::readDelFile(){
 			info->numOfChunk = res->rowsCount();
 			info->deletedChunk = 0;
 
-			takeLog(ldid, 0, fileid, 0, "Delete File", "Succesful", 0, info->name);
+			takeLog(ldid, 0, fileid, 0, "Delete File", "Succesful", info->size, info->name);
 
 			// get logical drive info
 			for(ld = ld_root->root; ld && ld->ldid != info->ldid; ld = ld->next);
