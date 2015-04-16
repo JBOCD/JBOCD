@@ -201,7 +201,7 @@ void Client::prepareStatement(){
 	insert_log = MySQL::getCon()->prepareStatement("INSERT INTO `log` (`ldid`, `cdid`, `fileid`, `seqnum`, `action`, `description`, `size`, `filename`) VALUE (?, ?, ?, ?, ?, ?, ?, ?)");
 }
 
-void Client::takeLog(unsigned int ldid, unsigned int cdid, unsigned long long fileid, unsigned int seqnum, const char* action, const char* description, unsigned long long size, char* filename){
+void Client::takeLog(unsigned int ldid, unsigned int cdid, unsigned long long fileid, unsigned int seqnum, const char* action, const char* description, unsigned long long size, const char* filename){
 
 	insert_log->setUInt(1, ldid);
 	insert_log->setUInt(2, cdid);
