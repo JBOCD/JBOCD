@@ -641,12 +641,20 @@ void Client::readGetFile(){
 				strcpy(chunk_info->chunkName, res->getString("chunk_name")->c_str());
 				Thread::create(&_thread_redirector, (void*) chunk_info, 1);
 			}
-			takeLog(info->ldid, 0, info->fileID, 0, "Get File", "Successful", info->size, NULL);
+			delete res;
+			get_file->setUInt(1,info->ldid);
+			get_file->setUInt(2,info->fileID);
+			(res = get_file->executeQuery())->next();
+			takeLog(info->ldid, 0, info->fileID, 0, "Get File", "Successful", info->size, res->getString("name"));
 			addResponseQueue(0x22, (void*) info);
 		}else{
 			info->num_of_chunk = 0;
 			info->size = 0;
-			takeLog(info->ldid, 0, info->fileID, 0, "Get File", "Fail: No chunk", info->size, NULL);
+			delete res;
+			get_file->setUInt(1,info->ldid);
+			get_file->setUInt(2,info->fileID);
+			(res = get_file->executeQuery())->next();
+			takeLog(info->ldid, 0, info->fileID, 0, "Get File", "Fail: No chunk", info->size, res->getString("name"));
 			addResponseQueue(0x22, (void*) info);
 		}
 		delete res;
