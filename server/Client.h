@@ -245,7 +245,7 @@ class Client{
 		bool checkLogicalDrive(unsigned int ldid);
 
 		void prepareStatement();
-		void takeLog(unsigned int ldid, unsigned int cdid, unsigned long long fileid, unsigned int seqnum, const char* action, const char* description, unsigned long long size);
+		void takeLog(unsigned int ldid, unsigned int cdid, unsigned long long fileid, unsigned int seqnum, const char* action, const char* description, unsigned long long size, char* filename);
 
 		void commandInterpreter();
 

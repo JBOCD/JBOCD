@@ -198,10 +198,10 @@ void Client::prepareStatement(){
 	remove_chunk = MySQL::getCon()->prepareStatement("DELETE FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
 
 	// logging
-	insert_log = MySQL::getCon()->prepareStatement("INSERT INTO `log` (`ldid`, `cdid`, `fileid`, `seqnum`, `action`, `description`, `size`) VALUE (?, ?, ?, ?, ?, ?, ?)");
+	insert_log = MySQL::getCon()->prepareStatement("INSERT INTO `log` (`ldid`, `cdid`, `fileid`, `seqnum`, `action`, `description`, `size`, `filename`) VALUE (?, ?, ?, ?, ?, ?, ?, ?)");
 }
 
-void Client::takeLog(unsigned int ldid, unsigned int cdid, unsigned long long fileid, unsigned int seqnum, const char* action, const char* description, unsigned long long size){
+void Client::takeLog(unsigned int ldid, unsigned int cdid, unsigned long long fileid, unsigned int seqnum, const char* action, const char* description, unsigned long long size, char* filename){
 
 	insert_log->setUInt(1, ldid);
 	insert_log->setUInt(2, cdid);
@@ -210,7 +210,11 @@ void Client::takeLog(unsigned int ldid, unsigned int cdid, unsigned long long fi
 	insert_log->setString(5, action);
 	insert_log->setString(6, description);
 	insert_log->setUInt64(7, size);
-	
+	if(filename){
+		insert_log->setString(8, filename);
+	}else{
+		insert_log->setString(8, "");
+	}
 	insert_log->executeUpdate();
 }
 
@@ -461,10 +465,10 @@ void Client::readCreateFile(){
 					create_file->setUInt64(5, info->size);
 					if(!create_file->executeUpdate()){
 						info->status = NO_CHANGE;
-						takeLog(info->ldid, 0, info->fileid = 0, 0, "Create File", "Fail", info->size);
+						takeLog(info->ldid, 0, info->fileid = 0, 0, "Create File", "Fail", info->size, info->name);
 					}else{
 						info->status = INSERT;
-						takeLog(info->ldid, 0, info->fileid, 0, "Create File", "Successful", info->size);
+						takeLog(info->ldid, 0, info->fileid, 0, "Create File", "Successful", info->size, info->name);
 					}
 					break;
 				}
@@ -493,10 +497,10 @@ void Client::readCreateFile(){
 				update_file->setUInt64(5, info->fileid);
 				if(!update_file->executeUpdate()){
 					info->status = NO_CHANGE;
-					takeLog(info->ldid, 0, info->fileid = 0, 0, "Update File", "Upload Chunk, but information has no changed", info->size);
+					takeLog(info->ldid, 0, info->fileid = 0, 0, "Update File", "Upload Chunk, but information has no changed", info->size, info->name);
 				}else{
 					info->status = UPDATE;
-					takeLog(info->ldid, 0, info->fileid, 0, "Update File", "Successful", info->size);
+					takeLog(info->ldid, 0, info->fileid, 0, "Update File", "Successful", info->size, info->name);
 				}
 			}
 			delete res;
@@ -567,20 +571,20 @@ void Client::readSaveFile(){
 				(res = check_clouddrive_size->executeQuery())->next();
 				if(res->getUInt(1)){
 					info->status = CHUNK_SIZE_EXCEED_CD_LIMIT;
-					takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Chunk size exceed Cloud Drive limit", info->chunkSize);
+					takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Chunk size exceed Cloud Drive limit", info->chunkSize, NULL);
 				}else{
 					if(update_clouddrive_alloc_size->executeUpdate()){
 						info->status = INSERT;
 					}else{
 						info->status = CD_NOT_IN_LD;
-						takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Cloud Drive is not in Logical Drive", info->chunkSize);
+						takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Cloud Drive is not in Logical Drive", info->chunkSize, NULL);
 					}
 				}
 			}
 			// executeUpdate return { 1 == Insert / No Change, 2 == update}
 			if(info->status >= NO_CHANGE){
 				info->status = update_chunk_info->executeUpdate();
-				takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", info->status == NO_CHANGE ? "Update Chunk but size no changed" : (info->status == INSERT ? "Insert Chunk" : "Update Chunk size"), info->chunkSize);
+				takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", info->status == NO_CHANGE ? "Update Chunk but size no changed" : (info->status == INSERT ? "Insert Chunk" : "Update Chunk size"), info->chunkSize, NULL);
 			}
 			delete res;
 			if(info->status >= NO_CHANGE){
@@ -590,12 +594,12 @@ void Client::readSaveFile(){
 			}
 		}else{
 			info->status = CHUNK_SIZE_ZERO_EXCEPTION;
-			takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Fail: Chunk size is zero", info->chunkSize);
+			takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Fail: Chunk size is zero", info->chunkSize, NULL);
 			addResponseQueue(0x21, info);
 		}
 	}else{
 		info->status = PERMISSION_DENY;
-		takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Fail: Permission Deny, Not owner of Logical Drive", info->chunkSize);
+		takeLog(info->ldid, info->cdid, info->fileid, info->seqnum, "Put Chunk", "Fail: Permission Deny, Not owner of Logical Drive", info->chunkSize, NULL);
 		addResponseQueue(0x21, info);
 	}
 }
@@ -637,12 +641,12 @@ void Client::readGetFile(){
 				strcpy(chunk_info->chunkName, res->getString("chunk_name")->c_str());
 				Thread::create(&_thread_redirector, (void*) chunk_info, 1);
 			}
-			takeLog(info->ldid, 0, info->fileID, 0, "Get File", "Successful", info->size);
+			takeLog(info->ldid, 0, info->fileID, 0, "Get File", "Successful", info->size, NULL);
 			addResponseQueue(0x22, (void*) info);
 		}else{
 			info->num_of_chunk = 0;
 			info->size = 0;
-			takeLog(info->ldid, 0, info->fileID, 0, "Get File", "Fail: No chunk", info->size);
+			takeLog(info->ldid, 0, info->fileID, 0, "Get File", "Fail: No chunk", info->size, NULL);
 			addResponseQueue(0x22, (void*) info);
 		}
 		delete res;
@@ -693,7 +697,7 @@ void Client::readDelFile(){
 			info->numOfChunk = res->rowsCount();
 			info->deletedChunk = 0;
 
-			takeLog(ldid, 0, fileid, 0, "Delete File", "Succesful", 0);
+			takeLog(ldid, 0, fileid, 0, "Delete File", "Succesful", 0, info->name);
 
 			// get logical drive info
 			for(ld = ld_root->root; ld && ld->ldid != info->ldid; ld = ld->next);
@@ -772,7 +776,7 @@ void Client::readDelChunk(){
 		get_all_chunk->setUInt(1, info->ldid);
 		get_all_chunk->setUInt64(2, info->fileid);
 		res = get_all_chunk->executeQuery();
-		takeLog(info->ldid, 0, info->fileid, 0, "Delete File Chunk", "Succesful", 0);
+		takeLog(info->ldid, 0, info->fileid, 0, "Delete File Chunk", "Succesful", 0, NULL);
 
 		info->numOfChunk = res->rowsCount();
 		info->deletedChunk = 0;

@@ -57,6 +57,7 @@ START_SH=${TEMP}/start
 STOP_SH=${TEMP}/stop
 TEMP_STOP_SH=${TEMP}/temp_stop
 OUTPUT_PATH=/usr/local/bin/CSS
+MOUDLE_DIR=/var/JBOCD/module
 #set proxy setting permanently
 if [ "$IS_AUTO_INSTALL" != "y" ]; then
 	SET_PROXY=`getYN 'Do You Want To Set Proxy?'` 
@@ -74,7 +75,6 @@ if [ "$IS_AUTO_INSTALL" != "y" ] && [ "$SET_PROXY" = "y" ]; then
 	fi
 	PERMANENT_PROXY=`getYN "Do You Want To Set Proxy Permanent?"`
 fi
-
 
 echo Starting installing
 
@@ -167,7 +167,8 @@ sudo make BUILD=$BUILD
 
 echo Setting up JBOCD
 [ ! -d /etc/JBOCD ] && sudo mkdir /etc/JBOCD
-
+[ ! -d $MOUDLE_DIR ] && mkdir $MOUDLE_DIR 
+chown www-data:www-data -R $MOUDLE_DIR
 if [ ! -f /etc/JBOCD/config.json ]; then
 	sudo cp config.json /etc/JBOCD/config.json
 	sudo chmod 644 /etc/JBOCD/config.json
