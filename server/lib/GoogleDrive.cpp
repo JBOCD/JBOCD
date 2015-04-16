@@ -118,21 +118,21 @@ unsigned int GoogleDrive::getID(){
 
 void* GoogleDrive::thread_reader(void* arg){
 	GoogleDrive* that = (GoogleDrive*)arg;
-	char a[] = {0,0};
+	char a;
 	struct result_queue* r;
-	while(1){
+	while(!that->isClosed){
 		r = (struct result_queue*) malloc(sizeof(struct result_queue));
 		r->opID = r->status = 0;
 		r->next = NULL;
-		while(read(that->c_stdout[0], a, 1) && (a[0] < '0' || a[0] > '9')); // clear all non number char
+		while(read(that->c_stdout[0], &a, 1) && (a < '0' || a > '9')); // clear all non number char
 		do{
-			r->opID = r->opID * 10 + a[0] - '0';
-		}while(read(that->c_stdout[0], a, 1) && a[0] >= '0' && a[0] <= '9');
+			r->opID = r->opID * 10 + a - '0';
+		}while(read(that->c_stdout[0], &a, 1) && a >= '0' && a <= '9');
 
-		while(read(that->c_stdout[0], a, 1) && (a[0] < '0' || a[0] > '9')); // clear all non number char
+		while(read(that->c_stdout[0], &a, 1) && (a < '0' || a > '9')); // clear all non number char
 		do{
-			r->status = r->status * 10 + a[0] - '0';
-		}while(!(that->isClosed = !read(that->c_stdout[0], a, 1)) && a[0] >= '0' && a[0] <= '9');
+			r->status = r->status * 10 + a - '0';
+		}while(!(that->isClosed = !read(that->c_stdout[0], &a, 1)) && a >= '0' && a <= '9');
 
 		pthread_mutex_lock(&that->read_mutex);
 		if(that->root){
@@ -142,7 +142,6 @@ void* GoogleDrive::thread_reader(void* arg){
 		}
 		pthread_cond_broadcast(&that->read_cond);
 		pthread_mutex_unlock(&that->read_mutex);
-
 	}
 	return NULL;
 }

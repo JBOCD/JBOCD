@@ -450,7 +450,7 @@ void Client::readCreateFile(){
 				res = get_next_fileid->executeQuery();
 				while(res->next()){
 					info->fileid=res->getUInt64("fileid");
-					update_logicaldrive_size->setUInt64(1, info->size);
+					update_logicaldrive_size->setInt64(1, info->size);
 					update_logicaldrive_size->setUInt(2, info->ldid);
 					update_logicaldrive_size->executeUpdate();
 
@@ -472,14 +472,14 @@ void Client::readCreateFile(){
 			delete res;
 		}else{ // update File
 			get_file->setUInt(1, info->ldid);
-			get_file->setUInt64(1, info->fileid);
+			get_file->setUInt64(2, info->fileid);
 			(res = get_file->executeQuery())->next();
 			long long diff = info->size - res->getUInt64("size"); // not yet test
 
 			check_logicaldrive_size->setInt64(1, diff);
 			check_logicaldrive_size->setUInt(2, info->ldid);
 			(res = check_logicaldrive_size->executeQuery())->next();
-			if(res->getUInt(0)){
+			if(res->getUInt(1)){
 				info->status = FILE_SIZE_EXCEED_LD_LIMIT;
 			}else{
 				update_logicaldrive_size->setInt64(1, diff);
@@ -680,6 +680,10 @@ void Client::readDelFile(){
 			del_file->setUInt( 1, ldid );
 			del_file->setUInt64( 2, fileid );
 			del_file->executeUpdate();
+
+			update_logicaldrive_size->setInt64(1, -1L * info->size);
+			update_logicaldrive_size->setUInt(2, ldid);
+			update_logicaldrive_size->executeUpdate();
 
 			delete res;
 			get_all_chunk->setUInt(1, info->ldid);

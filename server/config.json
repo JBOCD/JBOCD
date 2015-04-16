@@ -1,14 +1,4 @@
-/*
- * Readme first
- *
- * DO NOT REMOVE ANY COMMENT.
- * 
- * All comment are used to auto 
- *   config generating for install
- *   other plug-in.
- */
-{
-	"database":{
+{	"database":{
 		"MySQL":{
 			"host":"localhost",
 			"port":"3306",
@@ -19,10 +9,10 @@
 	},
 	"server":{
 		"port":9443,
-		"maxActiveClient":1000, // Server will reject any coming client if there is "maxClient" active connection
+		"maxActiveClient":40, // Server will reject any coming client if there is "maxClient" active connection
 		"maxWaitClient":10, // Server only have "maxWaitClient" waiting for accept
 		"bindRetryInterval":1, // unit: second
-		"maxThreadPerConnection": 100
+		"maxThreadPerConnection": 96
 	},
 	"socket":{
 		// reference:
@@ -34,7 +24,7 @@
 		//			10 Bytes (for size between 65536 and 2^64-1 )
 		"maxPackageSize": 5244320,
 		"secure": {
-			"certificate": "/etc/JBOCD/certificate.pem",
+			"certificate": "/etc/JBOCD/certificate.crt",
 			"privateKey": "/etc/JBOCD/privateKey.pem",
 			// if all set to false, it will use unsecure way to send a packet
 			"useTLSv1": true,
@@ -49,14 +39,14 @@
 			// if this path have '/', it will become a folder
 			// if this path have not '/', it will become tmp folder prefix
 			"dirpath" : "/var/JBOCD/tmp/",
-			"maxAllocate" : 1073741824 // 1 GB per connection
+			"maxAllocate" : 201326592 // 192 MB per connection
 		},
 		"maxUploadRetry"   : 3,
 		"maxDownloadRetry" : 3,
 		"maxDeleteRetry"   : 3
 	},
 	"memory":{
-		// 50MB for each client
-		"maxAllocate" : 52428800
+		// 40MB for each client
+		"maxAllocate" :41943040
 	}
 }
