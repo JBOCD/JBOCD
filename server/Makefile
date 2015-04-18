@@ -7,16 +7,7 @@ LDFLAGS	= -ljson -lmysqlcppconn -lcrypto -lssl -ldl
 all:
 #	gcc $(CFLAGS) -o main $(LDFLAGS) main.c
 
-	g++ -std=c++0x -c -Wall -fpic -o ${BUILD}/Dropbox.o lib/Dropbox.cpp
-	g++ -std=c++0x -shared -o /usr/local/lib/libdropbox.so ${BUILD}/Dropbox.o
-	g++ -std=c++0x -c -Wall -fpic -o ${BUILD}/GoogleDrive.o lib/GoogleDrive.cpp
-	g++ -std=c++0x -shared -o /usr/local/lib/libgoogledrive.so ${BUILD}/GoogleDrive.o
-
 	g++ -std=c++0x -pthread -o ${BUILD}/server main.cpp $(CFLAGS) $(LDFLAGS)
-
-clean:
-	[ -f /usr/local/lib/libdropbox.so ] && rm /usr/local/lib/libdropbox.so
-	[ -f /usr/local/lib/libgoogledrive.so ] && rm /usr/local/lib/libgoogledrive.so
 
 default:
 	echo nothing done!

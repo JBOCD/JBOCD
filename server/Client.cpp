@@ -63,7 +63,7 @@ void Client::loadCloudDrive(){
 				lid = res->getUInt("lid");
 				for(j=0;cd_handler[j].lid && cd_handler[j].lid != lid;j++);
 				if(!cd_handler[j].lid){
-					sprintf(tmpStr, "/usr/local/lib/lib%s.so", classname); // path hardcode now
+					sprintf(tmpStr, "/usr/local/lib/JBOCD/lib%s.so", classname); // path hardcode now
 					cd_handler[j].lid = lid;
 					cd_handler[j].handler = dlopen(tmpStr, RTLD_NOW | RTLD_LOCAL);
 					if(!cd_handler[j].handler){

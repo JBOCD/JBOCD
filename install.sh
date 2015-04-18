@@ -145,8 +145,6 @@ if [ ! -f ${SAVE_STEP_PATH}/lib-apt-install ]; then
 
 	#for third party
 	sudo apt-get install python python-setuptools python-pip -y
-	sudo easy_install --upgrade google-api-python-client
-	sudo pip install dropbox
 
 #	sudo apt-get isntall gcc clang libtool autoconf automake
 	touch ${SAVE_STEP_PATH}/lib-apt-install
@@ -167,8 +165,15 @@ sudo make BUILD=$BUILD
 
 echo Setting up JBOCD
 [ ! -d /etc/JBOCD ] && sudo mkdir /etc/JBOCD
-[ ! -d $MOUDLE_DIR ] && mkdir $MOUDLE_DIR 
-chown www-data:www-data -R $MOUDLE_DIR
+[ ! -d $MOUDLE_DIR ] && sudo mkdir $MOUDLE_DIR 
+[ ! -d /usr/local/lib/JBOCD ] && sudo mkdir -p /usr/local/lib/JBOCD
+
+sudo chown www-data:www-data -R /usr/local/lib/JBOCD
+sudo chown www-data:www-data -R $MOUDLE_DIR
+if [ ! "`sudo cat /etc/sudoers | grep \"www-data ALL = NOPASSWD: /usr/bin/python, NOPASSWD: /usr/bin/pip\"`" ]; then
+	sudo bash -c "echo \"www-data ALL = NOPASSWD: /usr/bin/python, NOPASSWD: /usr/bin/pip\" >>/etc/sudoers"
+fi
+
 if [ ! -f /etc/JBOCD/config.json ]; then
 	sudo cp config.json /etc/JBOCD/config.json
 	sudo chmod 644 /etc/JBOCD/config.json
