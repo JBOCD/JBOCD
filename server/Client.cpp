@@ -195,7 +195,7 @@ void Client::prepareStatement(){
 	get_file = MySQL::getCon()->prepareStatement("SELECT * FROM `directory` WHERE `ldid`=? AND `fileid`=?");
 	get_child = MySQL::getCon()->prepareStatement("SELECT * FROM `directory` WHERE `ldid`=? AND `parentid`=?");
 	//	used in 0x28, 0x29
-	remove_chunk = MySQL::getCon()->prepareStatement("DELETE FROM `filechunk` WHERE `ldid`=? AND `fileid`=?");
+	remove_chunk = MySQL::getCon()->prepareStatement("DELETE FROM `filechunk` WHERE `ldid`=? AND `fileid`=? AND `seqnum`=?");
 
 	// logging
 	insert_log = MySQL::getCon()->prepareStatement("INSERT INTO `log` (`ldid`, `cdid`, `fileid`, `seqnum`, `action`, `description`, `size`, `filename`) VALUE (?, ?, ?, ?, ?, ?, ?, ?)");
@@ -672,6 +672,9 @@ void Client::readDelFile(){
 		get_file->setUInt64( 2, fileid );
 		update_clouddrive_alloc_size->setUInt(2, ldid);
 
+		remove_chunk->setUInt(1, ldid);
+		remove_chunk->setUInt64(2, fileid);
+
 		res = get_file->executeQuery();
 		if(res->next()){
 			unsigned int cdid;
@@ -737,13 +740,13 @@ void Client::readDelFile(){
 						update_clouddrive_alloc_size->setUInt(3, cdid);
 						update_clouddrive_alloc_size->executeUpdate();
 
+						remove_chunk->setUInt(3, res->getUInt("seqnum"));
+						remove_chunk->executeUpdate();
+
 						Thread::create(&_thread_redirector, (void*) chunk_info, 2);
 					}
 				}
 			}
-			remove_chunk->setUInt(1, info->ldid);
-			remove_chunk->setUInt64(2, info->fileid);
-			remove_chunk->executeUpdate();
 			if(!info->numOfChunk){
 				addResponseQueue(0x28, info);
 			}
@@ -781,6 +784,11 @@ void Client::readDelChunk(){
 		struct client_del_chunk* chunk_info;
 		struct client_logical_drive* ld;
 
+		remove_chunk->setUInt(1, info->ldid);
+		remove_chunk->setUInt64(2, info->fileid);
+
+		update_clouddrive_alloc_size->setUInt(2, info->ldid);
+
 		get_all_chunk->setUInt(1, info->ldid);
 		get_all_chunk->setUInt64(2, info->fileid);
 		res = get_all_chunk->executeQuery();
@@ -814,9 +822,11 @@ void Client::readDelChunk(){
 				for(chunk_info->cd = cd_root->root; *chunk_info->cd && !(*chunk_info->cd)->isID(cdid); chunk_info->cd++);
 				if(*chunk_info->cd){
 					update_clouddrive_alloc_size->setInt64(1, -1L * res->getUInt("cdid"));
-					update_clouddrive_alloc_size->setUInt(2, info->ldid);
 					update_clouddrive_alloc_size->setUInt(3, cdid);
 					update_clouddrive_alloc_size->executeUpdate();
+
+					remove_chunk->setUInt(3, res->getUInt("seqnum"));
+					remove_chunk->executeUpdate();
 
 					Thread::create(&_thread_redirector, (void*) chunk_info, 2);
 				}

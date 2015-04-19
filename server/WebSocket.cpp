@@ -11,7 +11,7 @@ unsigned int WebSocket::getPackageSize(){
 	return MAX_PACKAGE_SIZE;
 }
 unsigned int WebSocket::getBufferSize(){
-	return MAX_PACKAGE_SIZE + 10; // send header (10 bytes) > recv decode (8 bytes)
+	return MAX_PACKAGE_SIZE + 64; // send header (10 bytes) < recv decode (64 bytes)
 }
 
 void WebSocket::setRecvHandle(int (* fun)(void *, int )){
@@ -151,9 +151,16 @@ unsigned int WebSocket::close(unsigned char* buf){
 
 unsigned long long WebSocket::decode(unsigned long long* in, unsigned long long* out, unsigned long long maskKey, int len){
 	unsigned long long tmp = maskKey;
-	int i=0, j=(len+7)/8;
-	for(;i<j;i++,in++,out++){
-		*out = *in ^ maskKey;
+	int i=0, j=(len+63)/64;
+	for(;i<j;i++,in+=8,out+=8){
+		* out    = * in    ^ maskKey;
+		*(out+1) = *(in+1) ^ maskKey;
+		*(out+2) = *(in+2) ^ maskKey;
+		*(out+3) = *(in+3) ^ maskKey;
+		*(out+4) = *(in+4) ^ maskKey;
+		*(out+5) = *(in+5) ^ maskKey;
+		*(out+6) = *(in+6) ^ maskKey;
+		*(out+7) = *(in+7) ^ maskKey;
 	}
 
 	if(payloadLen && (j=len%8)){
